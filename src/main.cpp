@@ -22,10 +22,10 @@ const int32_t COXA_DEFAULT  = 12000;
 const int32_t COXA_FORWARD  = 14500;  // Much more forward movement
 const int32_t COXA_BACKWARD = 9500;   // Much more backward movement
 
-const int32_t FEMUR_DOWN    = 17000;  // Lower stance for stability
-const int32_t FEMUR_UP      = 18500;  // Less aggressive lift
+const int32_t FEMUR_DOWN    = 17000;
+const int32_t FEMUR_UP      = 18500; 
 
-const int32_t TIBIA_DOWN    = 6000;   // Better ground contact
+const int32_t TIBIA_DOWN    = 7000;   // Better ground contact
 const int32_t TIBIA_UP      = 9000;   // Less aggressive lift
 
 // Proper tripod gait pattern
@@ -97,71 +97,87 @@ void moveLeg(int base, int32_t coxa, int32_t femur, int32_t tibia, int time = MO
 }
 
 void loop() {
-    // PHASE 1: Tripod 1 swings forward, Tripod 2 stays in stance
+    // === PHASE 1: Tripod 1 swings forward, Tripod 2 in stance ===
     Serial.println("Phase 1: Tripod 1 swings, Tripod 2 stance");
-    
-    // Step 1: Lift Tripod 1 legs (swing phase)
+
+    // Step 1: Lift Tripod 1
     for (int i = 0; i < 3; i++) {
-        moveLeg(TRIPOD1_LEGS[i], servos[TRIPOD1_LEGS[i]]->pos_read(), FEMUR_UP, TIBIA_UP, LIFT_TIME);
+        int leg = TRIPOD1_LEGS[i];
+        Serial.printf("Lifting Leg %d\n", leg);
+        moveLeg(leg, servos[leg]->pos_read(), FEMUR_UP, TIBIA_UP, LIFT_TIME);
         delay(SHORT_DELAY);
     }
     delay(SHORT_DELAY);
 
-    // Step 2: Move Tripod 1 legs forward (in air)
+    // Step 2: Swing Tripod 1 forward
     for (int i = 0; i < 3; i++) {
-        int32_t fwd_coxa = isRightSide(TRIPOD1_LEGS[i]) ? COXA_FORWARD : COXA_BACKWARD;
-        moveLeg(TRIPOD1_LEGS[i], fwd_coxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
+        int leg = TRIPOD1_LEGS[i];
+        int coxa = isRightSide(leg) ? COXA_FORWARD : COXA_BACKWARD;
+        Serial.printf("Swinging Forward Leg %d\n", leg);
+        moveLeg(leg, coxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
         delay(SHORT_DELAY);
     }
     delay(SHORT_DELAY);
 
-    // Step 3: Lower Tripod 1 legs to ground
+    // Step 3: Lower Tripod 1
     for (int i = 0; i < 3; i++) {
-        int32_t stance_coxa = isRightSide(TRIPOD1_LEGS[i]) ? COXA_FORWARD : COXA_BACKWARD;
-        moveLeg(TRIPOD1_LEGS[i], stance_coxa, FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
+        int leg = TRIPOD1_LEGS[i];
+        int coxa = isRightSide(leg) ? COXA_FORWARD : COXA_BACKWARD;
+        Serial.printf("Lowering Leg %d\n", leg);
+        moveLeg(leg, coxa, FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
         delay(SHORT_DELAY);
     }
     delay(SHORT_DELAY);
 
-    // Step 4: Push Tripod 2 legs backward (stance phase - legs stay on ground)
+    // Step 4: Push Tripod 2 backward
     for (int i = 0; i < 3; i++) {
-        int32_t push_coxa = isRightSide(TRIPOD2_LEGS[i]) ? COXA_BACKWARD : COXA_FORWARD;
-        moveLeg(TRIPOD2_LEGS[i], push_coxa, FEMUR_DOWN, TIBIA_DOWN, PUSH_TIME);
+        int leg = TRIPOD2_LEGS[i];
+        int coxa = isRightSide(leg) ? COXA_BACKWARD : COXA_FORWARD;
+        Serial.printf("Pushing Leg %d\n", leg);
+        moveLeg(leg, coxa, FEMUR_DOWN, TIBIA_DOWN, PUSH_TIME);
         delay(SHORT_DELAY);
     }
     delay(SHORT_DELAY);
 
-    // PHASE 2: Tripod 2 swings forward, Tripod 1 stays in stance
+    // === PHASE 2: Tripod 2 swings forward, Tripod 1 in stance ===
     Serial.println("Phase 2: Tripod 2 swings, Tripod 1 stance");
-    
-    // Step 1: Lift Tripod 2 legs (swing phase)
+
+    // Step 1: Lift Tripod 2
     for (int i = 0; i < 3; i++) {
-        moveLeg(TRIPOD2_LEGS[i], servos[TRIPOD2_LEGS[i]]->pos_read(), FEMUR_UP, TIBIA_UP, LIFT_TIME);
+        int leg = TRIPOD2_LEGS[i];
+        Serial.printf("Lifting Leg %d\n", leg);
+        moveLeg(leg, servos[leg]->pos_read(), FEMUR_UP, TIBIA_UP, LIFT_TIME);
         delay(SHORT_DELAY);
     }
     delay(SHORT_DELAY);
 
-    // Step 2: Move Tripod 2 legs forward (in air)
+    // Step 2: Swing Tripod 2 forward
     for (int i = 0; i < 3; i++) {
-        int32_t fwd_coxa = isRightSide(TRIPOD2_LEGS[i]) ? COXA_FORWARD : COXA_BACKWARD;
-        moveLeg(TRIPOD2_LEGS[i], fwd_coxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
+        int leg = TRIPOD2_LEGS[i];
+        int coxa = isRightSide(leg) ? COXA_FORWARD : COXA_BACKWARD;
+        Serial.printf("Swinging Forward Leg %d\n", leg);
+        moveLeg(leg, coxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
         delay(SHORT_DELAY);
     }
     delay(SHORT_DELAY);
 
-    // Step 3: Lower Tripod 2 legs to ground
+    // Step 3: Lower Tripod 2
     for (int i = 0; i < 3; i++) {
-        int32_t stance_coxa = isRightSide(TRIPOD2_LEGS[i]) ? COXA_FORWARD : COXA_BACKWARD;
-        moveLeg(TRIPOD2_LEGS[i], stance_coxa, FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
+        int leg = TRIPOD2_LEGS[i];
+        int coxa = isRightSide(leg) ? COXA_FORWARD : COXA_BACKWARD;
+        Serial.printf("Lowering Leg %d\n", leg);
+        moveLeg(leg, coxa, FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
         delay(SHORT_DELAY);
     }
     delay(SHORT_DELAY);
 
-    // Step 4: Push Tripod 1 legs backward (stance phase - legs stay on ground)
+    // Step 4: Push Tripod 1 backward
     for (int i = 0; i < 3; i++) {
-        int32_t push_coxa = isRightSide(TRIPOD1_LEGS[i]) ? COXA_BACKWARD : COXA_FORWARD;
-        moveLeg(TRIPOD1_LEGS[i], push_coxa, FEMUR_DOWN, TIBIA_DOWN, PUSH_TIME);
+        int leg = TRIPOD1_LEGS[i];
+        int coxa = isRightSide(leg) ? COXA_BACKWARD : COXA_FORWARD;
+        Serial.printf("Pushing Leg %d\n", leg);
+        moveLeg(leg, coxa, FEMUR_DOWN, TIBIA_DOWN, PUSH_TIME);
         delay(SHORT_DELAY);
     }
     delay(SHORT_DELAY);
-} 
+}

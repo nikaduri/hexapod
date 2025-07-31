@@ -10,6 +10,7 @@
             "includePath": [
                 "/home/nika/PlatformIO/Projects/hexapod/include",
                 "/home/nika/PlatformIO/Projects/hexapod/src",
+                "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/WiFi/src",
                 "/home/nika/PlatformIO/Projects/hexapod/.pio/libdeps/esp32-dev-c1/SparkFun 9DoF IMU Breakout - ICM 20948 - Arduino Library/src",
                 "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/Wire/src",
                 "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/SPI/src",
@@ -94,7 +95,6 @@
                 "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/Ticker/src",
                 "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/Update/src",
                 "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/WebServer/src",
-                "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/WiFi/src",
                 "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/WiFiClientSecure/src",
                 ""
             ],
@@ -103,6 +103,7 @@
                 "path": [
                     "/home/nika/PlatformIO/Projects/hexapod/include",
                     "/home/nika/PlatformIO/Projects/hexapod/src",
+                    "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/WiFi/src",
                     "/home/nika/PlatformIO/Projects/hexapod/.pio/libdeps/esp32-dev-c1/SparkFun 9DoF IMU Breakout - ICM 20948 - Arduino Library/src",
                     "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/Wire/src",
                     "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/SPI/src",
@@ -187,7 +188,6 @@
                     "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/Ticker/src",
                     "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/Update/src",
                     "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/WebServer/src",
-                    "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/WiFi/src",
                     "/home/nika/.platformio/packages/framework-arduinoespressif32@3.10004.210126/libraries/WiFiClientSecure/src",
                     ""
                 ]
