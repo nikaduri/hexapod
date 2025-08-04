@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="Home" />
+
+    <item
+        android:id="@+id/nav_connect"
+        android:icon="@drawable/ic_connect"
+        android:title="Connect" />
+
+    <item
+        android:id="@+id/nav_disconnect"
+        android:icon="@drawable/ic_disconnect"
+        android:title="Disconnect" />
+
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="Settings" />
+
+    <item
+        android:id="@+id/nav_qr"
+        android:icon="@drawable/ic_qr_code_scanner"
+        android:title="Scan QR Code" />
+
+    <item
+        android:id="@+id/nav_info"
+        android:icon="@drawable/ic_info"
+        android:title="About" />
+</menu>

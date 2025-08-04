@@ -46,22 +46,30 @@ const int PORT = 8080;
 
 WiFiServer server(PORT);
 
+enum Gait{
+    TRIPOD,
+    WAVE,
+    RIPPLE
+};
+
+Gait currentGait = TRIPOD;
+
 void setup() {
     Serial.begin(115200);
     delay(1000); 
     while (!Serial) {}
 
-    // WiFi.begin(SSID, PASSWORD);
+    WiFi.begin(SSID, PASSWORD);
 
-    // while (WiFi.status() != WL_CONNECTED) {
-    //     delay(500);
-    //     Serial.print(".");
-    // }
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
 
-    // Serial.print("IP address: ");
-    // Serial.println(WiFi.localIP());
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
 
-    //server.begin();
+    server.begin();
 
     WIRE_PORT.begin();
     WIRE_PORT.setClock(400000);
@@ -235,5 +243,36 @@ void tripodGait() {
 }
 
 void loop() {
-    waveGait();
+        // Check if a new client is trying to connect
+    if (!clientConnected) {
+        WiFiClient newClient = server.available();
+        if (newClient) {
+            persistentClient = newClient;
+            clientConnected = true;
+            Serial.println("Client Connected!");
+        }
+    }
+
+    // If connected, see if client has sent any data
+    if (clientConnected && persistentClient.connected()) {
+        while (persistentClient.available()) {
+            String incoming = persistentClient.readStringUntil('\n');  // read until newline
+            incoming.trim();
+
+            Serial.print("Received: ");
+            Serial.println(incoming);
+
+            // HANDLE COMMANDS
+
+            // Optional: send back a response
+            persistentClient.println("OK");
+        }
+    }
+
+    // If client disconnected, cleanup
+    if (clientConnected && !persistentClient.connected()) {
+        clientConnected = false;
+        persistentClient.stop();
+        Serial.println("Client Disconnected.");
+    }
 }

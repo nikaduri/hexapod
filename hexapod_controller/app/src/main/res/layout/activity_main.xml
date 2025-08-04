@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <!-- Main Content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/background_dark">
+
+        <!-- Toolbar with Menu -->
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/primary_dark"
+            app:navigationIcon="@drawable/ic_menu"
+            app:title="@string/app_name"
+            app:titleTextColor="@android:color/white"/>
+
+        <!-- Movement Controls Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"
+            android:paddingHorizontal="16dp">
+
+            <!-- Forward/Backward Controls (Left Side) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <Button
+                    android:id="@+id/btn_forward"
+                    style="@style/DirectionalButton"
+                    android:text="↑"/>
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="12dp"/>
+
+                <Button
+                    android:id="@+id/btn_backward"
+                    style="@style/DirectionalButton"
+                    android:text="↓"/>
+            </LinearLayout>
+
+            <!-- Center Space with Stop Button -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btn_stop"
+                    style="@style/StopButton"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:text="■"/>
+            </LinearLayout>
+
+            <!-- Left/Right Controls (Right Side) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_left"
+                    style="@style/DirectionalButton"
+                    android:text="←"/>
+
+                <Space
+                    android:layout_width="16dp"
+                    android:layout_height="match_parent"/>
+
+                <Button
+                    android:id="@+id/btn_right"
+                    style="@style/DirectionalButton"
+                    android:text="→"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Special Commands and Gait Controls Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <!-- Special Commands (Left Side) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btn_stand"
+                    style="@style/SpecialCommandButton"
+                    android:layout_margin="4dp"
+                    android:text="Stand" />
+
+                <Button
+                    android:id="@+id/btn_lay_down"
+                    style="@style/SpecialCommandButton"
+                    android:layout_margin="4dp"
+                    android:text="Lay Down" />
+
+                <Button
+                    android:id="@+id/btn_dance"
+                    style="@style/SpecialCommandButton"
+                    android:layout_margin="4dp"
+                    android:text="Dance" />
+            </LinearLayout>
+
+            <!-- Gait Mode Controls (Right Side) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btn_tripod_gait"
+                    style="@style/GaitModeButton"
+                    android:layout_margin="2dp"
+                    android:text="Tripod" />
+
+                <Button
+                    android:id="@+id/btn_wave_gait"
+                    style="@style/GaitModeButton"
+                    android:layout_margin="2dp"
+                    android:text="Wave" />
+
+                <Button
+                    android:id="@+id/btn_ripple_gait"
+                    style="@style/GaitModeButton"
+                    android:layout_margin="2dp"
+                    android:text="Ripple" />
+
+                <Button
+                    android:id="@+id/btn_staircase_mode"
+                    style="@style/GaitModeButton"
+                    android:layout_margin="2dp"
+                    android:text="Stair" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Status Bar -->
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="6dp"
+            android:text="Ready"
+            android:textColor="@color/white"
+            android:background="@color/primary_dark"/>
+    </LinearLayout>
+
+    <!-- Navigation Drawer -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:headerLayout="@layout/nav_header"
+        app:menu="@menu/nav_menu"/>
+
+</androidx.drawerlayout.widget.DrawerLayout>
