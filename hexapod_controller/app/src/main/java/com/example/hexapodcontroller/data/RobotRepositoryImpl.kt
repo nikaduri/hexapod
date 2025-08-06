@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.coroutineScope
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 @Singleton
 class RobotRepositoryImpl @Inject constructor(
@@ -23,11 +25,16 @@ class RobotRepositoryImpl @Inject constructor(
     private val _connectionState = MutableStateFlow<RobotConnectionState>(RobotConnectionState.Disconnected)
     override val connectionState: Flow<RobotConnectionState> = _connectionState.asStateFlow()
 
+    private val _batteryStatus = MutableStateFlow<BatteryStatus?>(null)
+    override val batteryStatus: Flow<BatteryStatus?> = _batteryStatus.asStateFlow()
+
     private var socket: Socket? = null
     private var continuousCommandJob: Job? = null
     private val isConnected = AtomicBoolean(false)
     private var lastCommandTime = AtomicLong(0)
     private var lastCommand: RobotCommand? = null
+    private var currentIpAddress: String = ""
+    private var currentPort: Int = 0
 
     override suspend fun connect(ipAddress: String, port: Int) {
         withContext(ioDispatcher) {
@@ -57,11 +64,13 @@ class RobotRepositoryImpl @Inject constructor(
                 
                 socket = newSocket
                 isConnected.set(true)
+                currentIpAddress = ipAddress
+                currentPort = port
                 
                 _connectionState.value = RobotConnectionState.Connected(ipAddress, port)
                 Log.d("RobotRepository", "Successfully connected to $ipAddress:$port")
                 
-                // Start connection monitoring in a new coroutine (less aggressive)
+                // Start connection monitoring to keep connection alive
                 launch {
                     monitorConnection()
                 }
@@ -89,6 +98,8 @@ class RobotRepositoryImpl @Inject constructor(
                 socket = null
                 isConnected.set(false)
                 lastCommand = null
+                currentIpAddress = ""
+                currentPort = 0
                 _connectionState.value = RobotConnectionState.Disconnected
             }
         }
@@ -167,6 +178,86 @@ class RobotRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun requestBatteryStatus(): BatteryStatus? {
+        return withContext(ioDispatcher) {
+            var batterySocket: Socket? = null
+            try {
+                if (!isConnected.get()) {
+                    Log.e("RobotRepository", "Cannot request battery: Not connected")
+                    return@withContext null
+                }
+
+                // Get connection details from stored values
+                if (currentIpAddress.isEmpty() || currentPort == 0) {
+                    Log.e("RobotRepository", "No connection details available")
+                    return@withContext null
+                }
+                
+                Log.d("RobotRepository", "Creating dedicated battery socket to $currentIpAddress:$currentPort")
+                
+                // Create a fresh socket connection just for battery request
+                batterySocket = Socket()
+                batterySocket.connect(InetSocketAddress(currentIpAddress, currentPort), 3000)
+                batterySocket.soTimeout = 5000
+                
+                Log.d("RobotRepository", "Battery socket connected, sending GET_BATTERY")
+                
+                // Send GET_BATTERY command
+                batterySocket.getOutputStream().apply {
+                    write((RobotCommand.GET_BATTERY.value + "\n").toByteArray())
+                    flush()
+                }
+                
+                // Read response from clean socket
+                val inputStream = batterySocket.getInputStream()
+                val responseBytes = ByteArray(256)
+                val bytesRead = inputStream.read(responseBytes)
+                
+                if (bytesRead > 0) {
+                    val fullResponse = String(responseBytes, 0, bytesRead)
+                    Log.d("RobotRepository", "Raw battery response: '$fullResponse'")
+                    
+                    // Find the battery line in the response
+                    val lines = fullResponse.split('\n', '\r').filter { it.isNotBlank() }
+                    val batteryLine = lines.find { it.startsWith("BATTERY:") }
+                    
+                    if (batteryLine != null) {
+                        val voltageString = batteryLine.substring(8).trim()
+                        Log.d("RobotRepository", "Extracted voltage: '$voltageString'")
+                        
+                        val voltage = voltageString.toFloatOrNull()
+                        
+                        if (voltage != null) {
+                            val batteryStatus = BatteryStatus.fromVoltage(voltage)
+                            _batteryStatus.value = batteryStatus
+                            Log.d("RobotRepository", "Battery updated: ${voltage}V (${batteryStatus.percentage}%)")
+                            return@withContext batteryStatus
+                        } else {
+                            Log.w("RobotRepository", "Invalid voltage value: '$voltageString'")
+                        }
+                    } else {
+                        Log.w("RobotRepository", "No BATTERY line found in response: $lines")
+                    }
+                } else {
+                    Log.w("RobotRepository", "No data received from battery socket")
+                }
+                
+                return@withContext null
+                
+            } catch (e: Exception) {
+                Log.e("RobotRepository", "Failed to request battery status: ${e.message}", e)
+                return@withContext null
+            } finally {
+                // Always close the dedicated battery socket
+                try {
+                    batterySocket?.close()
+                } catch (e: Exception) {
+                    Log.w("RobotRepository", "Error closing battery socket: ${e.message}")
+                }
+            }
+        }
+    }
+
     private suspend fun monitorConnection() = coroutineScope {
         try {
             var isMonitoring = true
@@ -182,28 +273,25 @@ class RobotRepositoryImpl @Inject constructor(
                     continue
                 }
 
-                // Simple connection check - send ping and expect response
+                // Simple connection check - just verify socket is still connected
                 try {
-                    // Send ping command (single byte 0) as expected by the server
-                    currentSocket.getOutputStream().apply {
-                        write(PING_COMMAND)
-                        flush()
-                    }
-                    
-                    // Wait for ping response (single byte 0) with timeout
-                    currentSocket.soTimeout = PING_TIMEOUT
-                    val response = currentSocket.getInputStream().read()
-                    if (response == 0) {
-                        // Successful ping
-                        failedPings = 0
-                        Log.d("RobotRepository", "Connection health check passed")
-                    } else {
+                    if (currentSocket.isClosed || !currentSocket.isConnected) {
+                        Log.w("RobotRepository", "Socket is closed or disconnected")
                         failedPings++
-                        Log.w("RobotRepository", "Unexpected ping response: $response (failed pings: $failedPings)")
+                    } else {
+                        // Send a simple keep-alive command instead of ping
+                        try {
+                            currentSocket.getOutputStream().apply {
+                                write("PING\n".toByteArray())
+                                flush()
+                            }
+                            failedPings = 0
+                            Log.d("RobotRepository", "Keep-alive sent successfully")
+                        } catch (e: Exception) {
+                            failedPings++
+                            Log.w("RobotRepository", "Keep-alive failed: ${e.message}")
+                        }
                     }
-                    
-                    // Reset socket timeout for normal operations
-                    currentSocket.soTimeout = SOCKET_TIMEOUT
                     
                 } catch (e: IOException) {
                     failedPings++
@@ -235,10 +323,10 @@ class RobotRepositoryImpl @Inject constructor(
     companion object {
         private const val SOCKET_TIMEOUT = 5000  // Reduced to 5 seconds for faster response
         private const val PING_TIMEOUT = 2000  // Reduced to 2 seconds for faster ping
-        private const val CONNECTION_CHECK_INTERVAL = 60000L  // Check connection every 60 seconds (less frequent for speed)
+        private const val CONNECTION_CHECK_INTERVAL = 30000L  // Check connection every 30 seconds (more frequent keep alive)
         private const val CONTINUOUS_COMMAND_INTERVAL = 100L  // Reduced to 100ms for faster response
         private const val MIN_COMMAND_INTERVAL = 20L  // Reduced to 20ms for faster command sending
-        private const val MAX_FAILED_PINGS = 5  // Allow 5 failed pings before disconnecting (more tolerant)
+        private const val MAX_FAILED_PINGS = 10  // Allow 10 failed pings before disconnecting (very tolerant)
         private const val DEFAULT_IP_ADDRESS = "192.168.1.1"
         private const val DEFAULT_PORT = 8080
         private const val KEY_IP_ADDRESS = "ip_address"

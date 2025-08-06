@@ -176,6 +176,15 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        
+        // Observe battery status separately
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.batteryStatus.collect { batteryStatus ->
+                    binding.batteryStatusView.updateBatteryStatus(batteryStatus)
+                }
+            }
+        }
     }
 
     private fun updateUI(connectionState: RobotConnectionState) {

@@ -15,15 +15,31 @@
         android:orientation="vertical"
         android:background="@color/background_dark">
 
-        <!-- Toolbar with Menu -->
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
+        <!-- Toolbar with Menu and Battery Status -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:orientation="horizontal"
             android:background="@color/primary_dark"
-            app:navigationIcon="@drawable/ic_menu"
-            app:title="@string/app_name"
-            app:titleTextColor="@android:color/white"/>
+            android:gravity="center_vertical">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                app:navigationIcon="@drawable/ic_menu"
+                app:title="@string/app_name"
+                app:titleTextColor="@android:color/white"/>
+
+            <com.example.hexapodcontroller.ui.BatteryStatusView
+                android:id="@+id/battery_status_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"/>
+
+        </LinearLayout>
 
         <!-- Movement Controls Row -->
         <LinearLayout

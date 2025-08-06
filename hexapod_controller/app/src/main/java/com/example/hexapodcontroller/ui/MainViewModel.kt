@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hexapodcontroller.data.RobotCommand
 import com.example.hexapodcontroller.data.RobotConnectionState
+import com.example.hexapodcontroller.data.BatteryStatus
 import com.example.hexapodcontroller.domain.RobotRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import javax.inject.Inject
 
 @HiltViewModel
@@ -17,11 +20,25 @@ class MainViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    
+    val batteryStatus: StateFlow<BatteryStatus?> = repository.batteryStatus.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
+    
+    private var batteryPollingJob: Job? = null
 
     init {
         viewModelScope.launch {
             repository.connectionState.collect { state ->
                 _uiState.update { it.copy(connectionState = state) }
+                
+                // Start or stop battery polling based on connection state
+                when (state) {
+                    is RobotConnectionState.Connected -> startBatteryPolling()
+                    else -> stopBatteryPolling()
+                }
             }
         }
     }
@@ -91,8 +108,29 @@ class MainViewModel @Inject constructor(
 
     fun getLastPort(): Int = repository.getLastPort()
 
+    private fun startBatteryPolling() {
+        stopBatteryPolling() // Stop any existing polling
+        
+        batteryPollingJob = viewModelScope.launch {
+            // Initial battery request
+            repository.requestBatteryStatus()
+            
+            // Poll every minute (60 seconds)
+            while (true) {
+                delay(60_000) // 60 seconds
+                repository.requestBatteryStatus()
+            }
+        }
+    }
+    
+    private fun stopBatteryPolling() {
+        batteryPollingJob?.cancel()
+        batteryPollingJob = null
+    }
+
     override fun onCleared() {
         super.onCleared()
+        stopBatteryPolling()
         viewModelScope.launch {
             repository.disconnect()
         }
