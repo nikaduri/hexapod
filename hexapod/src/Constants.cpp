@@ -17,12 +17,12 @@ const int32_t TIBIA_DOWN = 7000;
 const int TRIPOD1_LEGS[3] = {15, 12, 6};
 const int TRIPOD2_LEGS[3] = {0, 3, 9};
 
-const int MOVE_TIME   = 300;
-const int LIFT_TIME   = 150;
-const int PUSH_TIME   = 350;
-const int LOWER_TIME  = 250;
+const int MOVE_TIME   = 180;  // Reduced from 300ms for faster swing
+const int LIFT_TIME   = 120;  // Reduced from 150ms for faster lift
+const int PUSH_TIME   = 180;  // Match MOVE_TIME for symmetric gait
+const int LOWER_TIME  = 140;  // Reduced from 250ms for faster lower
 
-const int SHORT_DELAY = 50;
+const int SHORT_DELAY = 20;   // Reduced from 50ms for less waiting
 
 const int WAVE_ORDER[] = {15, 3, 6, 9, 12, 0}; 
 const int BODY_PUSH_DELTA = 800;

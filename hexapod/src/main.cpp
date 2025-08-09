@@ -28,8 +28,8 @@ const int PORT = 8080;
 WiFiServer server(PORT);
 
 GaitPattern currentGait = TRIPOD;
-
-bool stop = true;
+ 
+RobotMode currentMode = IDLE;
 
 
 void trimIncomingString(String& incoming) {
@@ -47,16 +47,24 @@ void trimIncomingString(String& incoming) {
 
 
 void initLegs() {
+    // Move legs to stable standing position only if they're not already there
+    bool anyMoved = false;
     for (int i = 0; i < 18; i += 3) {
         if(servos[i]->pos_read() != COXA_DEFAULT) {
-            servos[i]->move_time(COXA_DEFAULT, 0);
+            servos[i]->move_time(COXA_DEFAULT, 200);
+            anyMoved = true;
         }
         if(servos[i+1]->pos_read() != FEMUR_DOWN) {
-            servos[i+1]->move_time(FEMUR_DOWN, 0);
+            servos[i+1]->move_time(FEMUR_DOWN, 200);
+            anyMoved = true;
         }
         if(servos[i+2]->pos_read() != TIBIA_DOWN) {
-            servos[i+2]->move_time(TIBIA_DOWN, 0);
+            servos[i+2]->move_time(TIBIA_DOWN, 200);
+            anyMoved = true;
         }
+    }
+    if(anyMoved) {
+        delay(250); // Only delay if servos actually moved
     }
 }
 
@@ -114,16 +122,16 @@ void moveBackward() {
 
 void moveLeft() {
     rotate(LEFT);
-    stop = true;
+    currentMode = IDLE;
 }
 
 void moveRight() {
     rotate(RIGHT);
-    stop = true;
+    currentMode = IDLE;
 }
 
 void stopMoving() {
-    stop = true;
+    currentMode = IDLE;
 }
 
 float getBatteryVoltage() {
@@ -151,28 +159,25 @@ float getBatteryVoltage() {
 
 void handleIncoming(String incoming) {
     if (incoming.indexOf("STOP") != -1) {
-        stopMoving();
+        currentMode = IDLE;
     } else if (incoming.indexOf("FORWARD") != -1) {
-        stop = false;
-        moveForward();
+        currentMode = MOVE_FORWARD;
     } else if (incoming.indexOf("BACKWARD") != -1) {
-        stop = false;
-        moveBackward();
+        // Rotate 180 then continue moving forward
+        rotate(BACKWARD);
+        currentMode = MOVE_FORWARD;
     } else if (incoming.indexOf("LEFT") != -1) {
-        stop = false;
+        // One-off rotation
         moveLeft();
     } else if (incoming.indexOf("RIGHT") != -1) {
-        stop = false;
+        // One-off rotation
         moveRight();
     } else if (incoming.indexOf("STAND") != -1) {
-        initLegs();
-        stop = true;
+        currentMode = IDLE;
     } else if (incoming.indexOf("LAY_DOWN") != -1) {
-        // Implement lay down position
-        stop = true;
+        currentMode = LAY_DOWN;
     } else if (incoming.indexOf("DANCE") != -1) {
-        // Implement dance sequence
-        stop = true;
+        currentMode = DANCE;
     } else if (incoming.indexOf("TRIPOD_GAIT") != -1) {
         currentGait = TRIPOD;
     } else if (incoming.indexOf("WAVE_GAIT") != -1) {
@@ -332,9 +337,22 @@ void setup() {
 }
 
 void loop() {
-    if(!stop) {
-        moveForward();
-    } else {
-        initLegs();
-    } 
+    switch (currentMode) {
+        case MOVE_FORWARD:
+            moveForward();
+            break;
+        case IDLE:
+            initLegs();
+            break;
+        case LAY_DOWN:
+            // Not implemented yet; default to standing for safety
+            initLegs();
+            break;
+        case DANCE:
+            // Not implemented yet
+            break;
+        default:
+            initLegs();
+            break;
+    }
 }
