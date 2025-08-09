@@ -100,68 +100,90 @@ void TripodGait::move() {
 
 
 void TripodGait::rotateInPlace(Direction dir) {
-    if (dir != LEFT && dir != RIGHT) {
-        Serial.println("Invalid direction for rotateInPlace");
-        return;
+    // IMPORTANT:
+    // COXA_FORWARD/BACKWARD are servo extremes, not world directions.
+    // Due to mirrored servo orientations, achieving opposite world motion on left vs right
+    // requires setting the SAME servo extreme on both sides.
+    // To rotate LEFT (CCW): swing = COXA_FORWARD, push = COXA_BACKWARD (both sides)
+    // To rotate RIGHT (CW): swing = COXA_BACKWARD, push = COXA_FORWARD (both sides)
+    const int32_t swingCoxa = (dir == LEFT) ? COXA_FORWARD : COXA_BACKWARD;
+    const int32_t pushCoxa  = (dir == LEFT) ? COXA_BACKWARD : COXA_FORWARD;
+
+    // === PHASE 1: Tripod 1 swings, Tripod 2 generates torque ===
+    Serial.println("Rotate Phase 1: Tripod 1 swing, Tripod 2 push");
+
+    // Stabilize Tripod 2
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD2_LEGS[i];
+        moveLeg(leg, servos[leg]->pos_read(), FEMUR_DOWN, TIBIA_DOWN, 60);
     }
+    delay(60 + SHORT_DELAY);
 
-    bool clockwise = (dir == RIGHT);
-    Serial.println(clockwise ? "Rotating Right (Clockwise)" : "Rotating Left (Counter-clockwise)");
-
-    const int* tripods[2] = {TRIPOD1_LEGS, TRIPOD2_LEGS};
-
-    for (int phase = 0; phase < 2; ++phase) {
-        const int* currentTripod = tripods[phase];
-        const int* supportTripod = tripods[1 - phase];
-
-        // === Step 0: Make sure support tripod is down and stable ===
-        for (int i = 0; i < 3; ++i) {
-            int leg = supportTripod[i];
-            moveLeg(leg, COXA_DEFAULT, FEMUR_DOWN, TIBIA_DOWN, 0);
-        }
-        delay(100); // let it take the weight
-
-        // === Step 1: Lift tripod to swing (all legs simultaneously) ===
-        for (int i = 0; i < 3; ++i) {
-            int leg = currentTripod[i];
-            moveLeg(leg, servos[leg]->pos_read(), FEMUR_UP, TIBIA_UP, FAST_LIFT_TIME);
-        }
-        delay(FAST_LIFT_TIME + SHORT_DELAY);
-
-        // === Step 2: Rotate Coxa of lifted tripod (all legs simultaneously) ===
-        for (int i = 0; i < 3; ++i) {
-            int leg = currentTripod[i];
-            int coxaTarget = clockwise ? COXA_BACKWARD : COXA_FORWARD;
-            moveLeg(leg, coxaTarget, FEMUR_UP, TIBIA_UP, FAST_MOVE_TIME);
-        }
-        delay(FAST_MOVE_TIME + SHORT_DELAY);
-
-        // === Step 3: Lower legs back down (all legs simultaneously) ===
-        for (int i = 0; i < 3; ++i) {
-            int leg = currentTripod[i];
-            moveLeg(leg, COXA_DEFAULT, FEMUR_DOWN, TIBIA_DOWN, FAST_LOWER_TIME);
-        }
-        delay(FAST_LOWER_TIME + SHORT_DELAY);
-
-        // === Step 4: Push opposite tripod to generate torque ===
-        for (int i = 0; i < 3; ++i) {
-            int leg = supportTripod[i];
-            int coxaPush = clockwise ? COXA_FORWARD : COXA_BACKWARD;
-            Serial.printf("Pushing Support Leg %d\n", leg);
-            moveLeg(leg, coxaPush, FEMUR_DOWN, TIBIA_DOWN, FAST_PUSH_TIME);
-            delay(SHORT_DELAY);
-        }
-
-        delay(SHORT_DELAY);
-
-        // === Step 5: Return support tripod coxa to neutral ===
-        for (int i = 0; i < 3; ++i) {
-            int leg = supportTripod[i];
-            moveLeg(leg, COXA_DEFAULT, FEMUR_DOWN, TIBIA_DOWN, FAST_MOVE_TIME);
-        }
-
-        delay(FAST_DELAY);
+    // Lift Tripod 1
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD1_LEGS[i];
+        moveLeg(leg, servos[leg]->pos_read(), FEMUR_UP, TIBIA_UP, LIFT_TIME);
     }
+    delay(LIFT_TIME + SHORT_DELAY);
+
+    // Swing Tripod 1 coxa while lifted (same extreme both sides per note above)
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD1_LEGS[i];
+        moveLeg(leg, swingCoxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
+    }
+    delay(MOVE_TIME + SHORT_DELAY);
+
+    // Lower Tripod 1
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD1_LEGS[i];
+        moveLeg(leg, swingCoxa, FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
+    }
+    delay(LOWER_TIME + SHORT_DELAY);
+
+    // Stance push with Tripod 2 to create yaw torque
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD2_LEGS[i];
+        moveLeg(leg, pushCoxa, FEMUR_DOWN, TIBIA_DOWN, PUSH_TIME);
+    }
+    delay(PUSH_TIME + SHORT_DELAY);
+
+    // === PHASE 2: Tripod 2 swings, Tripod 1 generates torque ===
+    Serial.println("Rotate Phase 2: Tripod 2 swing, Tripod 1 push");
+
+    // Stabilize Tripod 1
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD1_LEGS[i];
+        moveLeg(leg, servos[leg]->pos_read(), FEMUR_DOWN, TIBIA_DOWN, 60);
+    }
+    delay(60 + SHORT_DELAY);
+
+    // Lift Tripod 2
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD2_LEGS[i];
+        moveLeg(leg, servos[leg]->pos_read(), FEMUR_UP, TIBIA_UP, LIFT_TIME);
+    }
+    delay(LIFT_TIME + SHORT_DELAY);
+
+    // Swing Tripod 2 coxa while lifted
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD2_LEGS[i];
+        moveLeg(leg, swingCoxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
+    }
+    delay(MOVE_TIME + SHORT_DELAY);
+
+    // Lower Tripod 2
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD2_LEGS[i];
+        moveLeg(leg, swingCoxa, FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
+    }
+    delay(LOWER_TIME + SHORT_DELAY);
+
+    // Stance push with Tripod 1
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD1_LEGS[i];
+        moveLeg(leg, pushCoxa, FEMUR_DOWN, TIBIA_DOWN, PUSH_TIME);
+    }
+    delay(PUSH_TIME + SHORT_DELAY);
 }
 
 

@@ -1,4 +1,3 @@
-// TripodGait.h
 #ifndef TRIPOD_GAIT_H
 #define TRIPOD_GAIT_H
 

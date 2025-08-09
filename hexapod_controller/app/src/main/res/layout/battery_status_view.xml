@@ -23,14 +23,6 @@
         android:textSize="14sp"
         android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/tv_battery_voltage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="8.4V"
-        android:textColor="@android:color/white"
-        android:textSize="12sp"
-        android:layout_marginStart="4dp"
-        android:alpha="0.8" />
+    
 
 </LinearLayout>

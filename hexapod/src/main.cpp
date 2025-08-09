@@ -1,10 +1,12 @@
 #include "ICM_20948.h" 
 #include <Arduino.h>
 #include <lx16a-servo.h>
-#include <Constants.h>
+#include "Constants.h"
 #include "TripodGait.h"
 #include "WaveGait.h"
+#include "HorizontalBalance.h"
 #include "Enums.h"
+#include "BatteryReader.h"
 
 #include <WiFi.h>
 
@@ -17,6 +19,8 @@ LX16AServo* servos[18];
 
 TripodGait tripodGait(servoBus, servos);
 WaveGait waveGait(servoBus, servos);
+HorizontalBalance balanceSystem(myICM, servos);
+BatteryReader batteryReader(batteryPin);
 
 WiFiClient persistentClient;
 bool clientConnected = false;
@@ -84,6 +88,123 @@ void moveForward() {
     }
 }
 
+void layDown() {
+    Serial.println("Laying down posture (gentle, hold)");
+
+    // Gentler movement: slower timings and smaller deltas
+    const int32_t targetCoxa = COXA_DEFAULT;
+
+    // Soften femur/tibia targets for less aggressive tuck (avoid min() to silence -Wstrict-overflow)
+    const int32_t targetFemurStage1 = (FEMUR_UP - 500); // smaller initial raise
+    const int32_t targetFemurStage2 = FEMUR_UP - 250;                // less extreme final
+
+    const int32_t targetTibiaStage1 = TIBIA_UP + 120; // small bend
+    const int32_t targetTibiaStage2 = TIBIA_UP + 260; // moderate bend
+
+    // Stage 1: ensure coxa are neutral
+    for (int base = 0; base < 18; base += 3) {
+        servos[base]->move_time(targetCoxa, 380);
+    }
+    delay(420);
+
+    // Stage 2: gentle femur raise + slight tibia bend
+    for (int base = 0; base < 18; base += 3) {
+        servos[base + 1]->move_time(targetFemurStage1, 420);
+        servos[base + 2]->move_time(targetTibiaStage1, 420);
+    }
+    delay(450);
+
+    // Stage 3: finish tuck with moderate femur/tibia targets
+    for (int base = 0; base < 18; base += 3) {
+        servos[base + 1]->move_time(targetFemurStage2, 520);
+        servos[base + 2]->move_time(targetTibiaStage2, 520);
+    }
+    delay(540);
+
+    Serial.println("Lay down complete");
+}
+
+void standUp() {
+    Serial.println("Standing up from laid posture (tripod-staged)");
+
+    const int32_t targetCoxa = COXA_DEFAULT;
+
+    // Step 0: neutralize all coxa to avoid sweeping
+    for (int base = 0; base < 18; base += 3) {
+        servos[base]->move_time(targetCoxa, 380);
+    }
+    delay(400);
+
+    // Helper lambdas for grouped moves
+    auto moveTripod = [&](const int legs[3], int32_t femur, int32_t tibia, int time) {
+        for (int i = 0; i < 3; i++) {
+            int base = legs[i];
+            servos[base + 1]->move_time(femur, time);
+            servos[base + 2]->move_time(tibia, time);
+        }
+    };
+
+    auto moveTripodFemurOnly = [&](const int legs[3], int32_t femur, int time) {
+        for (int i = 0; i < 3; i++) {
+            int base = legs[i];
+            servos[base + 1]->move_time(femur, time);
+        }
+    };
+
+    auto moveTripodTibiaOnly = [&](const int legs[3], int32_t tibia, int time) {
+        for (int i = 0; i < 3; i++) {
+            int base = legs[i];
+            servos[base + 2]->move_time(tibia, time);
+        }
+    };
+
+    // Conservative targets
+    const int32_t femurLift = (FEMUR_UP - 280);
+    const int32_t tibiaUnbend1 = (TIBIA_UP + 110);
+    const int32_t tibiaUnbend2 = (TIBIA_UP + 50);
+    const int32_t femurApproach = (FEMUR_DOWN + 180);
+    const int32_t tibiaStance = TIBIA_DOWN;
+    const int32_t femurStance = FEMUR_DOWN;
+
+    // Tripod 1 staged stand-up (15, 12, 6)
+    // Targeted relief for leg 15 first (known sticky)
+    servos[15 + 1]->move_time(FEMUR_UP - 250, 420);
+    servos[15 + 2]->move_time(TIBIA_UP + 120, 420);
+    delay(440);
+
+    // Stage A1: lift femur and unbend tibia
+    moveTripod(TRIPOD1_LEGS, femurLift, tibiaUnbend1, 420);
+    delay(440);
+    // Stage A2: more tibia extension while keeping femur high
+    moveTripodTibiaOnly(TRIPOD1_LEGS, tibiaUnbend2, 440);
+    delay(460);
+    // Stage A3: lower femur towards stance and extend tibia to stance
+    moveTripod(TRIPOD1_LEGS, femurApproach, tibiaStance, 480);
+    delay(500);
+    // Stage A4: finalize femur stance
+    moveTripodFemurOnly(TRIPOD1_LEGS, femurStance, 500);
+    delay(520);
+
+    // Tripod 2 staged stand-up (0, 3, 9)
+    // Stage B1: lift femur and unbend tibia
+    moveTripod(TRIPOD2_LEGS, femurLift, tibiaUnbend1, 420);
+    delay(440);
+    // Stage B2: more tibia extension while keeping femur high
+    moveTripodTibiaOnly(TRIPOD2_LEGS, tibiaUnbend2, 440);
+    delay(460);
+    // Stage B3: lower femur towards stance and extend tibia to stance
+    moveTripod(TRIPOD2_LEGS, femurApproach, tibiaStance, 480);
+    delay(500);
+    // Stage B4: finalize femur stance
+    moveTripodFemurOnly(TRIPOD2_LEGS, femurStance, 500);
+    delay(520);
+
+    // Small final normalization to exact stance for all legs
+    initLegs();
+
+    Serial.println("Stand up complete");
+}
+
 void rotateLeft() {
     tripodGait.rotateInPlace(LEFT);
 }
@@ -134,27 +255,8 @@ void stopMoving() {
     currentMode = IDLE;
 }
 
-float getBatteryVoltage() {
-    float voltage = 0;
-
-    for(int i = 0; i < 20; i++) {
-        voltage += servos[0]->vin();
-        delay(10);
-    }
-
-    voltage /= 20;
-    
-    voltage /= 1000.0; // Convert mV to V
-    
-    // Clamp voltage to reasonable range for 2S battery (6.0V - 8.2V)
-    if (voltage < 6.0) voltage = 6.0;
-    if (voltage > 8.2) voltage = 8.2;
-    
-    Serial.print("Battery voltage: ");
-    Serial.print(voltage, 2);
-    Serial.println("V");
-    
-    return voltage;
+int getBatteryPercentage() {
+    return batteryReader.getPercentage();
 }
 
 void handleIncoming(String incoming) {
@@ -177,7 +279,9 @@ void handleIncoming(String incoming) {
     } else if (incoming.indexOf("LAY_DOWN") != -1) {
         currentMode = LAY_DOWN;
     } else if (incoming.indexOf("DANCE") != -1) {
-        currentMode = DANCE;
+        currentMode = BALANCE;
+    } else if (incoming.indexOf("BALANCE") != -1) {
+        currentMode = BALANCE;
     } else if (incoming.indexOf("TRIPOD_GAIT") != -1) {
         currentGait = TRIPOD;
     } else if (incoming.indexOf("WAVE_GAIT") != -1) {
@@ -187,15 +291,50 @@ void handleIncoming(String incoming) {
     } else if (incoming.indexOf("STAIRCASE_MODE") != -1) {
         // Implement staircase mode
     } else if (incoming.indexOf("GET_BATTERY") != -1) {
-        // Handle battery status request
-        float voltage = getBatteryVoltage();
-        String response = "BATTERY:" + String(voltage, 2);
+        int percentage = getBatteryPercentage();
+        String response = "BATTERY:" + String(percentage);
         
         if (clientConnected && persistentClient.connected()) {
             persistentClient.println(response);
             Serial.println("Sent battery response: " + response);
         }
         return; // Don't send "OK" response for battery requests
+    } else if (incoming.indexOf("CALIBRATE_BALANCE") != -1) {
+        // Calibrate balance system
+        Serial.println("Calibrating balance system...");
+        balanceSystem.calibrateLevel();
+        Serial.println("Balance calibration complete!");
+    } else if (incoming.indexOf("BALANCE_STATUS") != -1) {
+        // Report balance system status
+        bool isActive = balanceSystem.isBalanceActive();
+        double roll = balanceSystem.getRoll();
+        double pitch = balanceSystem.getPitch();
+        
+        String status = "BALANCE_STATUS:Active=" + String(isActive ? "true" : "false") + 
+                       ",Roll=" + String(roll, 2) + ",Pitch=" + String(pitch, 2);
+        
+        if (clientConnected && persistentClient.connected()) {
+            persistentClient.println(status);
+            Serial.println("Sent: " + status);
+        }
+        return;
+    } else if (incoming.indexOf("AUTOTUNE_BALANCE") != -1) {
+        // Run PID autotuning
+        Serial.println("Starting balance system autotuning...");
+        if (currentMode != BALANCE) {
+            // ensure safe stance before autotune
+            initLegs();
+            delay(500);
+        }
+
+        if (balanceSystem.autotunePID()) {
+            Serial.println("Autotuning completed successfully!");
+        } else {
+            Serial.println("Autotuning failed!");
+        }
+        return;
+    } else if (incoming.indexOf("STAND_UP") != -1) {
+        currentMode = STAND_UP;
     } else if (incoming.indexOf("PING") != -1) {
         // Handle keep-alive ping - just ignore it, the "OK" response is enough
         Serial.println("Keep-alive ping received");
@@ -226,9 +365,8 @@ void wifiListenTask(void* parameter) {
                     Serial.println("Received: " + incoming);
                     
                     if (incoming.indexOf("GET_BATTERY") != -1) {
-                        // Handle battery request immediately
-                        float voltage = getBatteryVoltage();
-                        String response = "BATTERY:" + String(voltage, 2);
+                        int percentage = getBatteryPercentage();
+                        String response = "BATTERY:" + String(percentage);
                         newClient.println(response);
                         Serial.println("Sent battery response: " + response);
                         newClient.flush();
@@ -320,6 +458,24 @@ void setup() {
 
     initLegs();
 
+    // Initialize gyroscope
+    myICM.begin(WIRE_PORT, AD0_VAL);
+    
+    Serial.print("Initializing ICM-20948... ");
+    
+    if (myICM.status != ICM_20948_Stat_Ok) {
+        Serial.println("ERROR: ICM-20948 not connected!");
+    } else {
+        Serial.println("OK");
+        
+        // Initialize balance system
+        if (balanceSystem.begin()) {
+            Serial.println("Balance system ready!");
+        } else {
+            Serial.println("ERROR: Balance system initialization failed!");
+        }
+    }
+
     delay(1500);
     
     Serial.println("Ready to walk!");
@@ -345,14 +501,50 @@ void loop() {
             initLegs();
             break;
         case LAY_DOWN:
-            // Not implemented yet; default to standing for safety
-            initLegs();
+            layDown();
+            currentMode = LAID_DOWN; // hold laid down posture until commanded otherwise
             break;
-        case DANCE:
-            // Not implemented yet
+        case LAID_DOWN:
+            // Keep servos at last commanded positions; do nothing
+            delay(20);
+            break;
+        case STAND_UP:
+            standUp();
+            currentMode = IDLE;
+            break;
+        case BALANCE:
+            // Handle balance mode
+            static bool balanceEntered = false;
+            if (!balanceEntered) {
+                balanceSystem.enterBalanceMode();
+                balanceEntered = true;
+                Serial.println("Balance mode activated!");
+            }
+            
+            // Update balance control loop
+            balanceSystem.updateBalance();
+            
+            // Add a small delay to prevent overwhelming the system
+            delay(10);
             break;
         default:
             initLegs();
             break;
     }
+    
+    // Handle mode transitions
+    static RobotMode lastMode = IDLE;
+    static bool balanceWasActive = false;
+    
+    // If we are not in BALANCE mode, do not touch balance system
+    if (lastMode == BALANCE && currentMode != BALANCE && balanceWasActive) {
+        balanceSystem.exitBalanceMode();
+        balanceWasActive = false;
+        Serial.println("Exited balance mode");
+    }
+    if (currentMode == BALANCE) {
+        balanceWasActive = true;
+    }
+    
+    lastMode = currentMode;
 }

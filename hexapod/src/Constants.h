@@ -10,6 +10,8 @@
 extern const char* SSID;
 extern const char* PASSWORD;
 
+extern const int batteryPin;
+
 // Gait constants
 extern const int32_t COXA_FORWARD;
 extern const int32_t COXA_BACKWARD;

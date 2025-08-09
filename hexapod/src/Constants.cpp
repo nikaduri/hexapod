@@ -4,6 +4,8 @@
 const char* SSID = "hex";
 const char* PASSWORD = "krolika123";
 
+const int batteryPin = 2;
+
 const int32_t COXA_FORWARD  = 14500;
 const int32_t COXA_BACKWARD = 9500;
 const int32_t COXA_DEFAULT  = 12000;

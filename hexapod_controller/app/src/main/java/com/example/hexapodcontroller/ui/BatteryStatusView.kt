@@ -17,14 +17,12 @@ class BatteryStatusView @JvmOverloads constructor(
 
     private val batteryIcon: ImageView
     private val batteryPercentage: TextView
-    private val batteryVoltage: TextView
 
     init {
         LayoutInflater.from(context).inflate(R.layout.battery_status_view, this, true)
         
         batteryIcon = findViewById(R.id.iv_battery_icon)
         batteryPercentage = findViewById(R.id.tv_battery_percentage)
-        batteryVoltage = findViewById(R.id.tv_battery_voltage)
         
         // Set default state
         updateBatteryDisplay(null)
@@ -37,7 +35,6 @@ class BatteryStatusView @JvmOverloads constructor(
     private fun updateBatteryDisplay(batteryStatus: BatteryStatus?) {
         if (batteryStatus == null) {
             batteryPercentage.text = "--"
-            batteryVoltage.text = "--V"
             batteryIcon.setImageResource(R.drawable.ic_battery)
             alpha = 0.5f
             return
@@ -45,7 +42,6 @@ class BatteryStatusView @JvmOverloads constructor(
 
         alpha = 1.0f
         batteryPercentage.text = "${batteryStatus.percentage}%"
-        batteryVoltage.text = String.format("%.2fV", batteryStatus.voltage)
 
         // Update icon based on percentage
         val iconRes = when {

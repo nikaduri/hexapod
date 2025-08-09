@@ -222,18 +222,19 @@ class RobotRepositoryImpl @Inject constructor(
                     val batteryLine = lines.find { it.startsWith("BATTERY:") }
                     
                     if (batteryLine != null) {
-                        val voltageString = batteryLine.substring(8).trim()
-                        Log.d("RobotRepository", "Extracted voltage: '$voltageString'")
+                        val percentageString = batteryLine.substring(8).trim()
+                        Log.d("RobotRepository", "Extracted percentage: '$percentageString'")
                         
-                        val voltage = voltageString.toFloatOrNull()
+                        val percentage = percentageString.toIntOrNull()
                         
-                        if (voltage != null) {
-                            val batteryStatus = BatteryStatus.fromVoltage(voltage)
+                        if (percentage != null) {
+                            val clamped = percentage.coerceIn(0, 100)
+                            val batteryStatus = BatteryStatus(clamped)
                             _batteryStatus.value = batteryStatus
-                            Log.d("RobotRepository", "Battery updated: ${voltage}V (${batteryStatus.percentage}%)")
+                            Log.d("RobotRepository", "Battery updated: ${batteryStatus.percentage}%")
                             return@withContext batteryStatus
                         } else {
-                            Log.w("RobotRepository", "Invalid voltage value: '$voltageString'")
+                            Log.w("RobotRepository", "Invalid percentage value: '$percentageString'")
                         }
                     } else {
                         Log.w("RobotRepository", "No BATTERY line found in response: $lines")
