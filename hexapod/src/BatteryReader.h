@@ -9,14 +9,15 @@ class BatteryReader {
 public:
 
     BatteryReader(int analogPin);
+    BatteryReader(int analogPin, adc_attenuation_t attenuation);
 
     float getPercentage();
 
 
 private:
     const int samples = 10;
-    const int min = 1452;
-    const int max = 2035;
+    const int min = 1680;   
+    const int max = 2355;  
     int analogPin;
 };
 

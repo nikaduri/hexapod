@@ -1,13 +1,16 @@
-// Constants.cpp
 #include "Constants.h"
 
 const char* SSID = "hex";
 const char* PASSWORD = "krolika123";
 
-const int batteryPin = 2;
+const int batteryPin = 33;
 
-const int32_t COXA_FORWARD  = 14500;
-const int32_t COXA_BACKWARD = 9500;
+const int FEMUR_STANCE_ROTATE = 18000; // Crouches the robot lower
+const int TIBIA_STANCE_ROTATE = 6000;  // Pushes the feet further out
+const int OVERLAP_DELAY = 50;
+
+const int32_t COXA_FORWARD  = 13500;
+const int32_t COXA_BACKWARD = 11500;
 const int32_t COXA_DEFAULT  = 12000;
 
 const int32_t FEMUR_UP   = 18500;
@@ -19,12 +22,12 @@ const int32_t TIBIA_DOWN = 7000;
 const int TRIPOD1_LEGS[3] = {15, 12, 6};
 const int TRIPOD2_LEGS[3] = {0, 3, 9};
 
-const int MOVE_TIME   = 180;  // Reduced from 300ms for faster swing
-const int LIFT_TIME   = 120;  // Reduced from 150ms for faster lift
-const int PUSH_TIME   = 180;  // Match MOVE_TIME for symmetric gait
-const int LOWER_TIME  = 140;  // Reduced from 250ms for faster lower
+const int MOVE_TIME   = 180;  
+const int LIFT_TIME   = 120;  
+const int PUSH_TIME   = 180;  
+const int LOWER_TIME  = 140;  
 
-const int SHORT_DELAY = 20;   // Reduced from 50ms for less waiting
+const int SHORT_DELAY = 20; 
 
 const int WAVE_ORDER[] = {15, 3, 6, 9, 12, 0}; 
 const int BODY_PUSH_DELTA = 800;

@@ -42,4 +42,8 @@ extern const int FAST_LOWER_TIME;
 extern const int FAST_PUSH_TIME;
 extern const int FAST_DELAY;
 
+extern const int FEMUR_STANCE_ROTATE;
+extern const int TIBIA_STANCE_ROTATE;
+extern const int OVERLAP_DELAY;
+
 #endif

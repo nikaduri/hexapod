@@ -4,7 +4,6 @@
 #include "Constants.h"
 #include "TripodGait.h"
 #include "WaveGait.h"
-#include "HorizontalBalance.h"
 #include "Enums.h"
 #include "BatteryReader.h"
 
@@ -19,7 +18,6 @@ LX16AServo* servos[18];
 
 TripodGait tripodGait(servoBus, servos);
 WaveGait waveGait(servoBus, servos);
-HorizontalBalance balanceSystem(myICM, servos);
 BatteryReader batteryReader(batteryPin);
 
 WiFiClient persistentClient;
@@ -265,14 +263,11 @@ void handleIncoming(String incoming) {
     } else if (incoming.indexOf("FORWARD") != -1) {
         currentMode = MOVE_FORWARD;
     } else if (incoming.indexOf("BACKWARD") != -1) {
-        // Rotate 180 then continue moving forward
         rotate(BACKWARD);
         currentMode = MOVE_FORWARD;
     } else if (incoming.indexOf("LEFT") != -1) {
-        // One-off rotation
         moveLeft();
     } else if (incoming.indexOf("RIGHT") != -1) {
-        // One-off rotation
         moveRight();
     } else if (incoming.indexOf("STAND") != -1) {
         currentMode = IDLE;
@@ -299,46 +294,11 @@ void handleIncoming(String incoming) {
             Serial.println("Sent battery response: " + response);
         }
         return; // Don't send "OK" response for battery requests
-    } else if (incoming.indexOf("CALIBRATE_BALANCE") != -1) {
-        // Calibrate balance system
-        Serial.println("Calibrating balance system...");
-        balanceSystem.calibrateLevel();
-        Serial.println("Balance calibration complete!");
-    } else if (incoming.indexOf("BALANCE_STATUS") != -1) {
-        // Report balance system status
-        bool isActive = balanceSystem.isBalanceActive();
-        double roll = balanceSystem.getRoll();
-        double pitch = balanceSystem.getPitch();
-        
-        String status = "BALANCE_STATUS:Active=" + String(isActive ? "true" : "false") + 
-                       ",Roll=" + String(roll, 2) + ",Pitch=" + String(pitch, 2);
-        
-        if (clientConnected && persistentClient.connected()) {
-            persistentClient.println(status);
-            Serial.println("Sent: " + status);
-        }
-        return;
-    } else if (incoming.indexOf("AUTOTUNE_BALANCE") != -1) {
-        // Run PID autotuning
-        Serial.println("Starting balance system autotuning...");
-        if (currentMode != BALANCE) {
-            // ensure safe stance before autotune
-            initLegs();
-            delay(500);
-        }
-
-        if (balanceSystem.autotunePID()) {
-            Serial.println("Autotuning completed successfully!");
-        } else {
-            Serial.println("Autotuning failed!");
-        }
-        return;
     } else if (incoming.indexOf("STAND_UP") != -1) {
         currentMode = STAND_UP;
     } else if (incoming.indexOf("PING") != -1) {
-        // Handle keep-alive ping - just ignore it, the "OK" response is enough
         Serial.println("Keep-alive ping received");
-        return; // The "OK" response will be sent by the caller
+        return;
     } else {
         Serial.println("Unknown command: " + incoming);
     }
@@ -346,18 +306,15 @@ void handleIncoming(String incoming) {
 
 void wifiListenTask(void* parameter) {
     for (;;) {
-        // Check for new clients (both persistent and temporary)
         WiFiClient newClient = server.available();
         if (newClient) {
             Serial.println("New client connected");
             
-            // Handle this client immediately
             if (newClient.connected()) {
                 if (newClient.available()) {
                     String incoming = newClient.readStringUntil('\n');
                     incoming.trim();
                     
-                    // Remove null characters
                     while (incoming.length() > 0 && incoming.charAt(0) == '\0') {
                         incoming = incoming.substring(1);
                     }
@@ -370,10 +327,9 @@ void wifiListenTask(void* parameter) {
                         newClient.println(response);
                         Serial.println("Sent battery response: " + response);
                         newClient.flush();
-                        delay(10); // Small delay to ensure data is sent
-                        newClient.stop(); // Close the connection
+                        delay(10); 
+                        newClient.stop(); 
                     } else if (incoming.length() > 0) {
-                        // Handle other commands
                         handleIncoming(incoming);
                         newClient.println("OK");
                         
@@ -390,13 +346,11 @@ void wifiListenTask(void* parameter) {
             }
         }
 
-        // Handle persistent client for movement commands
         if (clientConnected && persistentClient.connected()) {
             if (persistentClient.available()) {
                 String incoming = persistentClient.readStringUntil('\n');
                 incoming.trim();
                 
-                // Remove null characters
                 while (incoming.length() > 0 && incoming.charAt(0) == '\0') {
                     incoming = incoming.substring(1);
                 }
@@ -407,7 +361,6 @@ void wifiListenTask(void* parameter) {
                 }
             }
             
-            // Handle ping requests for persistent client
             if (persistentClient.available() == 1) {
                 byte pingByte = persistentClient.read();
                 if (pingByte == 0) {
@@ -416,7 +369,6 @@ void wifiListenTask(void* parameter) {
             }
         }
 
-        // Check if persistent client disconnected
         if (clientConnected && !persistentClient.connected()) {
             clientConnected = false;
             persistentClient.stop();
@@ -461,19 +413,11 @@ void setup() {
     // Initialize gyroscope
     myICM.begin(WIRE_PORT, AD0_VAL);
     
-    Serial.print("Initializing ICM-20948... ");
     
     if (myICM.status != ICM_20948_Stat_Ok) {
         Serial.println("ERROR: ICM-20948 not connected!");
     } else {
         Serial.println("OK");
-        
-        // Initialize balance system
-        if (balanceSystem.begin()) {
-            Serial.println("Balance system ready!");
-        } else {
-            Serial.println("ERROR: Balance system initialization failed!");
-        }
     }
 
     delay(1500);
@@ -514,18 +458,6 @@ void loop() {
             break;
         case BALANCE:
             // Handle balance mode
-            static bool balanceEntered = false;
-            if (!balanceEntered) {
-                balanceSystem.enterBalanceMode();
-                balanceEntered = true;
-                Serial.println("Balance mode activated!");
-            }
-            
-            // Update balance control loop
-            balanceSystem.updateBalance();
-            
-            // Add a small delay to prevent overwhelming the system
-            delay(10);
             break;
         default:
             initLegs();
@@ -533,18 +465,7 @@ void loop() {
     }
     
     // Handle mode transitions
-    static RobotMode lastMode = IDLE;
-    static bool balanceWasActive = false;
-    
-    // If we are not in BALANCE mode, do not touch balance system
-    if (lastMode == BALANCE && currentMode != BALANCE && balanceWasActive) {
-        balanceSystem.exitBalanceMode();
-        balanceWasActive = false;
-        Serial.println("Exited balance mode");
-    }
-    if (currentMode == BALANCE) {
-        balanceWasActive = true;
-    }
+    static RobotMode lastMode = IDLE;    
     
     lastMode = currentMode;
 }
