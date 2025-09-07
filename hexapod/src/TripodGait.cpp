@@ -4,6 +4,12 @@
 TripodGait::TripodGait(LX16ABus& bus, LX16AServo** servoArray)
     : Gait(bus, servoArray) {}
 
+// Helper function to apply drift correction to coxa positions
+int32_t TripodGait::applyCoxaOffset(int32_t basePosition, int leg) {
+    int32_t offset = isRightSide(leg) ? RIGHT_SIDE_COXA_OFFSET : LEFT_SIDE_COXA_OFFSET;
+    return basePosition + offset;
+}
+
 void TripodGait::move() {
     // === PHASE 1: Tripod 1 swings, Tripod 2 pushes ===
     // ... (Lift and Swing/Push code is correct) ...
@@ -75,82 +81,105 @@ void TripodGait::move() {
 
 
 void TripodGait::rotateInPlace(Direction dir) {
-    const int32_t swingCoxa = (dir == LEFT) ? COXA_FORWARD + 1000 : COXA_BACKWARD - 1000;
-    const int32_t pushCoxa  = (dir == LEFT) ? COXA_BACKWARD - 1000 : COXA_FORWARD + 1000;
-
-    // === PHASE 1: Tripod 1 swings, Tripod 2 generates torque ===
-    Serial.println("Rotate Phase 1: Tripod 1 swing, Tripod 2 push");
-
-    // Stabilize Tripod 2
-    for (int i = 0; i < 3; i++) {
-        int leg = TRIPOD2_LEGS[i];
-        moveLeg(leg, servos[leg]->pos_read(), FEMUR_DOWN, TIBIA_DOWN, 60);
-    }
-    delay(60 + SHORT_DELAY);
-
-    // Lift Tripod 1
+    // For TRUE rotation, ALL legs must work together to create angular movement
+    // The key insight: legs move in a circular pattern around the robot's center
+    
+    // === PHASE 1: Tripod 1 swings, Tripod 2 pushes ===
+    
+    // Step 1: Lift Tripod 1
+    Serial.println("Lifting Tripod 1 for rotation");
     for (int i = 0; i < 3; i++) {
         int leg = TRIPOD1_LEGS[i];
         moveLeg(leg, servos[leg]->pos_read(), FEMUR_UP, TIBIA_UP, LIFT_TIME);
     }
     delay(LIFT_TIME + SHORT_DELAY);
 
-    // Swing Tripod 1 coxa while lifted (same extreme both sides per note above)
+    // Step 2 (Combined): Swing and Push for rotation
+    Serial.println("Rotating Tripod 1 & Pushing Tripod 2");
+    
+    // Tripod 1 swing - move to new rotational positions
     for (int i = 0; i < 3; i++) {
         int leg = TRIPOD1_LEGS[i];
-        moveLeg(leg, swingCoxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
+        int32_t targetCoxa;
+        
+        if (dir == LEFT) {
+            // For counterclockwise rotation: ALL legs move clockwise relative to their current position
+            targetCoxa = COXA_ROTATE_FORWARD;  // All legs to same extreme
+        } else { // RIGHT
+            // For clockwise rotation: ALL legs move counterclockwise relative to their current position  
+            targetCoxa = COXA_ROTATE_BACKWARD; // All legs to same extreme
+        }
+        moveLeg(leg, targetCoxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
     }
-    delay(MOVE_TIME + SHORT_DELAY);
-
-    // Lower Tripod 1
-    for (int i = 0; i < 3; i++) {
-        int leg = TRIPOD1_LEGS[i];
-        moveLeg(leg, swingCoxa, FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
-    }
-    delay(LOWER_TIME + SHORT_DELAY);
-
-    // Stance push with Tripod 2 to create yaw torque
+    
+    // Tripod 2 push - create rotational force by pushing in opposite direction
     for (int i = 0; i < 3; i++) {
         int leg = TRIPOD2_LEGS[i];
-        moveLeg(leg, pushCoxa, FEMUR_DOWN, TIBIA_DOWN, PUSH_TIME);
+        int32_t pushCoxa;
+        
+        if (dir == LEFT) {
+            // Push in opposite direction to create rotation
+            pushCoxa = COXA_ROTATE_BACKWARD;
+        } else { // RIGHT
+            pushCoxa = COXA_ROTATE_FORWARD;
+        }
+        moveLeg(leg, pushCoxa, FEMUR_STANCE_ROTATE, TIBIA_STANCE_ROTATE, MOVE_TIME);
     }
-    delay(PUSH_TIME + SHORT_DELAY);
-
-    // === PHASE 2: Tripod 2 swings, Tripod 1 generates torque ===
-    Serial.println("Rotate Phase 2: Tripod 2 swing, Tripod 1 push");
-
-    // Stabilize Tripod 1
+    delay(MOVE_TIME + SHORT_DELAY);
+    
+    // Step 3: Lower Tripod 1 to the ground
+    Serial.println("Lowering Tripod 1");
     for (int i = 0; i < 3; i++) {
         int leg = TRIPOD1_LEGS[i];
-        moveLeg(leg, servos[leg]->pos_read(), FEMUR_DOWN, TIBIA_DOWN, 60);
+        moveLeg(leg, servos[leg]->pos_read(), FEMUR_STANCE_ROTATE, TIBIA_STANCE_ROTATE, LOWER_TIME);
     }
-    delay(60 + SHORT_DELAY);
+    delay(LOWER_TIME);
 
-    // Lift Tripod 2
+    // === PHASE 2: Tripod 2 swings, Tripod 1 pushes ===
+    
+    // Step 1: Lift Tripod 2
+    Serial.println("Lifting Tripod 2 for rotation");
     for (int i = 0; i < 3; i++) {
         int leg = TRIPOD2_LEGS[i];
         moveLeg(leg, servos[leg]->pos_read(), FEMUR_UP, TIBIA_UP, LIFT_TIME);
     }
     delay(LIFT_TIME + SHORT_DELAY);
 
-    // Swing Tripod 2 coxa while lifted
+    // Step 2 (Combined): Swing and Push for rotation
+    Serial.println("Rotating Tripod 2 & Pushing Tripod 1");
+    
+    // Tripod 2 swing - continue rotational movement
     for (int i = 0; i < 3; i++) {
         int leg = TRIPOD2_LEGS[i];
-        moveLeg(leg, swingCoxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
+        int32_t targetCoxa;
+        
+        if (dir == LEFT) {
+            targetCoxa = COXA_ROTATE_FORWARD;
+        } else { // RIGHT
+            targetCoxa = COXA_ROTATE_BACKWARD;
+        }
+        moveLeg(leg, targetCoxa, FEMUR_UP, TIBIA_UP, MOVE_TIME);
     }
-    delay(MOVE_TIME + SHORT_DELAY);
-
-    // Lower Tripod 2
-    for (int i = 0; i < 3; i++) {
-        int leg = TRIPOD2_LEGS[i];
-        moveLeg(leg, swingCoxa, FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
-    }
-    delay(LOWER_TIME + SHORT_DELAY);
-
-    // Stance push with Tripod 1
+    
+    // Tripod 1 push - create rotational force
     for (int i = 0; i < 3; i++) {
         int leg = TRIPOD1_LEGS[i];
-        moveLeg(leg, pushCoxa, FEMUR_DOWN, TIBIA_DOWN, PUSH_TIME);
+        int32_t pushCoxa;
+        
+        if (dir == LEFT) {
+            pushCoxa = COXA_ROTATE_BACKWARD;
+        } else { // RIGHT
+            pushCoxa = COXA_ROTATE_FORWARD;
+        }
+        moveLeg(leg, pushCoxa, FEMUR_STANCE_ROTATE, TIBIA_STANCE_ROTATE, MOVE_TIME);
     }
-    delay(PUSH_TIME + SHORT_DELAY);
+    delay(MOVE_TIME + SHORT_DELAY);
+    
+    // Step 3: Lower Tripod 2 to the ground
+    Serial.println("Lowering Tripod 2");
+    for (int i = 0; i < 3; i++) {
+        int leg = TRIPOD2_LEGS[i];
+        moveLeg(leg, servos[leg]->pos_read(), FEMUR_STANCE_ROTATE, TIBIA_STANCE_ROTATE, LOWER_TIME);
+    }
+    delay(LOWER_TIME); 
 }

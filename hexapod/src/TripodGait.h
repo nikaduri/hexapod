@@ -14,7 +14,8 @@ public:
     void rotateInPlace(Direction dir);
 
 private:
-    
+    // Helper function to apply drift correction
+    int32_t applyCoxaOffset(int32_t basePosition, int leg);
 };
 
 #endif // TRIPOD_GAIT_H
