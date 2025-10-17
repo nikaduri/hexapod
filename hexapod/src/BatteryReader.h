@@ -16,8 +16,8 @@ public:
 
 private:
     const int samples = 10;
-    const int min = 1680;   
-    const int max = 2355;  
+    const int min = 1680; 
+    const int max = 2355;
     int analogPin;
 };
 

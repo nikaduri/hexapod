@@ -24,7 +24,7 @@ public:
 
     
     bool isRightSide(int base) {
-        return base == 3 || base == 6 || base == 15;  // Right side legs
+        return base == 0 || base == 3 || base == 6;  // Right side legs
     }
 
     void moveLeg(int base, int32_t coxa, int32_t femur, int32_t tibia, int time = MOVE_TIME) {

@@ -16,6 +16,8 @@ ICM_20948_I2C myICM;
 LX16ABus servoBus;
 LX16AServo* servos[18];
 
+int switches[6];
+
 TripodGait tripodGait(servoBus, servos);
 WaveGait waveGait(servoBus, servos);
 BatteryReader batteryReader(batteryPin);
@@ -434,6 +436,8 @@ void setup() {
         &wifiTaskHandle,    // Handle
         0                   // Core
     );
+
+    
 }
 
 void loop() {
@@ -465,7 +469,5 @@ void loop() {
     }
     
     // Handle mode transitions
-    static RobotMode lastMode = IDLE;    
-    
-    lastMode = currentMode;
+    static RobotMode lastMode = currentMode;    
 }

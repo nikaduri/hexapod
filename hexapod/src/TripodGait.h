@@ -17,4 +17,4 @@ private:
     
 };
 
-#endif // TRIPOD_GAIT_H
+#endif
