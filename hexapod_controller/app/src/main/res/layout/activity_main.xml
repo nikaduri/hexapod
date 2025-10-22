@@ -157,26 +157,14 @@
                 <Button
                     android:id="@+id/btn_tripod_gait"
                     style="@style/GaitModeButton"
-                    android:layout_margin="2dp"
+                    android:layout_margin="6dp"
                     android:text="Tripod" />
 
                 <Button
                     android:id="@+id/btn_wave_gait"
                     style="@style/GaitModeButton"
-                    android:layout_margin="2dp"
+                    android:layout_margin="6dp"
                     android:text="Wave" />
-
-                <Button
-                    android:id="@+id/btn_ripple_gait"
-                    style="@style/GaitModeButton"
-                    android:layout_margin="2dp"
-                    android:text="Ripple" />
-
-                <Button
-                    android:id="@+id/btn_staircase_mode"
-                    style="@style/GaitModeButton"
-                    android:layout_margin="2dp"
-                    android:text="Stair" />
             </LinearLayout>
         </LinearLayout>
 

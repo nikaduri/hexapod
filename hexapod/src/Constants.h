@@ -17,6 +17,7 @@ extern const int32_t COXA_FORWARD;
 extern const int32_t COXA_BACKWARD;
 extern const int32_t COXA_DEFAULT;
 
+
 extern const int32_t FEMUR_UP;
 extern const int32_t FEMUR_DOWN;
 
@@ -25,6 +26,8 @@ extern const int32_t TIBIA_DOWN;
 
 extern const int TRIPOD1_LEGS[3];
 extern const int TRIPOD2_LEGS[3];
+
+extern const int SWITCH_PINS[6];
 
 extern const int MOVE_TIME;
 extern const int LIFT_TIME;
@@ -53,5 +56,10 @@ extern const int32_t RIGHT_SIDE_COXA_OFFSET;
 // Rotation constants - more extreme positions for better rotation
 extern const int32_t COXA_ROTATE_FORWARD;
 extern const int32_t COXA_ROTATE_BACKWARD;
+
+// Rotation timing - slightly slower for smoother rotation
+extern const int ROTATE_MOVE_TIME;
+extern const int ROTATE_LIFT_TIME;
+extern const int ROTATE_LOWER_TIME;
 
 #endif

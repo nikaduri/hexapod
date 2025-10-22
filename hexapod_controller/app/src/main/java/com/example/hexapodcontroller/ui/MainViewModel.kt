@@ -90,16 +90,6 @@ class MainViewModel @Inject constructor(
         _uiState.update { it.copy(currentGaitMode = GaitMode.WAVE) }
     }
 
-    fun setRippleGait() {
-        onSingleCommand(RobotCommand.RIPPLE_GAIT)
-        _uiState.update { it.copy(currentGaitMode = GaitMode.RIPPLE) }
-    }
-
-    fun setStaircaseMode() {
-        onSingleCommand(RobotCommand.STAIRCASE_MODE)
-        _uiState.update { it.copy(currentGaitMode = GaitMode.STAIRCASE) }
-    }
-
     fun updateConnectionSettings(ipAddress: String, port: Int) {
         repository.saveConnectionSettings(ipAddress, port)
     }
@@ -138,7 +128,7 @@ class MainViewModel @Inject constructor(
 }
 
 enum class GaitMode {
-    TRIPOD, WAVE, RIPPLE, STAIRCASE
+    TRIPOD, WAVE
 }
 
 data class MainUiState(

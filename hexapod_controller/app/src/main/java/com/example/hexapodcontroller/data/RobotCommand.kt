@@ -12,8 +12,6 @@ enum class RobotCommand(val value: String) {
     // Gait modes
     TRIPOD_GAIT("TRIPOD_GAIT"),
     WAVE_GAIT("WAVE_GAIT"),
-    RIPPLE_GAIT("RIPPLE_GAIT"),
-    STAIRCASE_MODE("STAIRCASE_MODE"),
     // Battery monitoring
     GET_BATTERY("GET_BATTERY");
 

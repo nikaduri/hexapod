@@ -121,14 +121,6 @@ class MainActivity : AppCompatActivity() {
                 Log.d("MainActivity", "Wave Gait button clicked")
                 viewModel.setWaveGait()
             }
-            btnRippleGait.setOnClickListener {
-                Log.d("MainActivity", "Ripple Gait button clicked")
-                viewModel.setRippleGait()
-            }
-            btnStaircaseMode.setOnClickListener {
-                Log.d("MainActivity", "Staircase Mode button clicked")
-                viewModel.setStaircaseMode()
-            }
 
             // QR Scanner launch
             //btnScanQr.setOnClickListener { checkCameraPermission() }
@@ -207,21 +199,15 @@ class MainActivity : AppCompatActivity() {
         // Reset all gait buttons to normal style
         binding.btnTripodGait.setBackgroundTintList(null)
         binding.btnWaveGait.setBackgroundTintList(null)
-        binding.btnRippleGait.setBackgroundTintList(null)
-        binding.btnStaircaseMode.setBackgroundTintList(null)
 
         // Apply normal style to all buttons
         binding.btnTripodGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.accent, null)))
         binding.btnWaveGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.accent, null)))
-        binding.btnRippleGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.accent, null)))
-        binding.btnStaircaseMode.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.accent, null)))
 
         // Highlight the current gait mode with distinct color
         when (currentGaitMode) {
             GaitMode.TRIPOD -> binding.btnTripodGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.gait_selected, null)))
             GaitMode.WAVE -> binding.btnWaveGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.gait_selected, null)))
-            GaitMode.RIPPLE -> binding.btnRippleGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.gait_selected, null)))
-            GaitMode.STAIRCASE -> binding.btnStaircaseMode.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.gait_selected, null)))
         }
     }
 

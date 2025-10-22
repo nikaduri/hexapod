@@ -206,11 +206,11 @@ void standUp() {
 }
 
 void rotateLeft() {
-    tripodGait.rotateInPlace(LEFT);
+    tripodGait.rotateInPlace(RIGHT);  
 }
 
 void rotateRight() {
-    tripodGait.rotateInPlace(RIGHT);
+    tripodGait.rotateInPlace(LEFT);
 }
 
 void rotateBackward() {
@@ -467,7 +467,5 @@ void loop() {
             initLegs();
             break;
     }
-    
-    // Handle mode transitions
-    static RobotMode lastMode = currentMode;    
+     
 }

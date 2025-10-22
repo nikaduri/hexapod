@@ -1,31 +1,38 @@
 #include "Constants.h"
 
+// 25 - 0 adc
+// 27 - 3 adc
+// 14 - 6 adc
+// 26 - 9 adc
+// 19 - 12 
+// 23 - 15
+
 const char* SSID = "hex";
 const char* PASSWORD = "krolika123";
 
 const int batteryPin = 33;
 
-const int FEMUR_STANCE_ROTATE = 18000;
-const int TIBIA_STANCE_ROTATE = 6000;
+const int FEMUR_STANCE_ROTATE = 18200;  // Match FEMUR_DOWN for proper stance
+const int TIBIA_STANCE_ROTATE = 5000;  // Match TIBIA_DOWN to keep all legs on ground
 const int OVERLAP_DELAY = 50;
 
-const int32_t COXA_FORWARD  = 13500;
-const int32_t COXA_BACKWARD = 11500;
+const int32_t COXA_FORWARD  = 11500;
+const int32_t COXA_BACKWARD = 13500;
 const int32_t COXA_DEFAULT  = 12000;
 
 const int32_t FEMUR_UP   = 18500;
-const int32_t FEMUR_DOWN = 17000;
+const int32_t FEMUR_DOWN = 18200;  // Increased to make hexapod stand higher
 
 const int32_t TIBIA_UP   = 10000;
-const int32_t TIBIA_DOWN = 7000;
+const int32_t TIBIA_DOWN = 5000;   // Decreased to make hexapod stand higher
 
 const int TRIPOD1_LEGS[3] = {0, 12, 6};
 const int TRIPOD2_LEGS[3] = {15, 3, 9};
 
-const int MOVE_TIME   = 180;  
-const int LIFT_TIME   = 120;  
-const int PUSH_TIME   = 180;  
-const int LOWER_TIME  = 140;  
+const int MOVE_TIME   = 210;  // Increased from 180 for slightly slower walking
+const int LIFT_TIME   = 140;  // Increased from 120 for slightly slower walking
+const int PUSH_TIME   = 210;  // Increased from 180 for slightly slower walking
+const int LOWER_TIME  = 160;  // Increased from 140 for slightly slower walking  
 
 // SLOW MOVE TIMES
 // const int MOVE_TIME   = 500;  
@@ -51,3 +58,8 @@ const int32_t RIGHT_SIDE_COXA_OFFSET = -75;   // Offset for right side legs (3, 
 // Rotation constants - more extreme positions for effective rotation
 const int32_t COXA_ROTATE_FORWARD  = 15000;  // More extreme forward for rotation
 const int32_t COXA_ROTATE_BACKWARD = 9000;   // More extreme backward for rotation
+
+// Rotation timing - slower for smoother rotation
+const int ROTATE_MOVE_TIME  = 280;  // Slower than walking (210ms)
+const int ROTATE_LIFT_TIME  = 190;  // Slower than walking (140ms)
+const int ROTATE_LOWER_TIME = 210;  // Slower than walking (160ms)
