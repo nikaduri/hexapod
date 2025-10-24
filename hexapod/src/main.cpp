@@ -16,8 +16,6 @@ ICM_20948_I2C myICM;
 LX16ABus servoBus;
 LX16AServo* servos[18];
 
-int switches[6];
-
 TripodGait tripodGait(servoBus, servos);
 WaveGait waveGait(servoBus, servos);
 BatteryReader batteryReader(batteryPin);
@@ -36,6 +34,7 @@ GaitPattern currentGait = TRIPOD;
 RobotMode currentMode = IDLE;
 
 
+
 void trimIncomingString(String& incoming) {
     incoming.trim();
     // Remove all control characters (including null bytes)
@@ -50,25 +49,137 @@ void trimIncomingString(String& incoming) {
 }
 
 
+// Helper function to get switch index from leg base servo ID
+int getSwitchIndexForLeg(int legBase) {
+    switch(legBase) {
+        case 0:  return 0;
+        case 3:  return 1;
+        case 6:  return 2;
+        case 9:  return 3;
+        case 12: return 4;
+        case 15: return 5;
+        default: return -1;
+    }
+}
+
+// Helper function to check if leg is on ground (debounced)
+bool isLegGrounded(int legBase) {
+    int switchIndex = getSwitchIndexForLeg(legBase);
+    if (switchIndex < 0) return false;
+    
+    int switchPin = SWITCH_PINS[switchIndex];
+    
+    // Take multiple readings and use majority vote for reliability
+    int pressedCount = 0;
+    const int READINGS = 5;
+    
+    for (int i = 0; i < READINGS; i++) {
+        if (digitalRead(switchPin) == 1) {
+            pressedCount++;
+        }
+        delayMicroseconds(200);
+    }
+    
+    // Require at least 3 out of 5 readings to be HIGH
+    return pressedCount >= 3;
+}
+
 void initLegs() {
-    // Move legs to stable standing position only if they're not already there
-    bool anyMoved = false;
     for (int i = 0; i < 18; i += 3) {
         if(servos[i]->pos_read() != COXA_DEFAULT) {
             servos[i]->move_time(COXA_DEFAULT, 200);
-            anyMoved = true;
         }
         if(servos[i+1]->pos_read() != FEMUR_DOWN) {
             servos[i+1]->move_time(FEMUR_DOWN, 200);
-            anyMoved = true;
         }
         if(servos[i+2]->pos_read() != TIBIA_DOWN) {
             servos[i+2]->move_time(TIBIA_DOWN, 200);
-            anyMoved = true;
         }
     }
-    if(anyMoved) {
-        delay(250); // Only delay if servos actually moved
+
+    delay(2000);
+
+    // Verify all legs are grounded, adaptively lower any that aren't
+    const int32_t TIBIA_STEP_SIZE = 80;
+    const int32_t FEMUR_STEP_SIZE = 60;  // Increased for more adjustment range
+    const int STEP_DELAY = 25;
+    const int MAX_STEPS = 40;
+    
+    for (int legBase = 0; legBase < 18; legBase += 3) {
+        // Check if leg is grounded
+        if (isLegGrounded(legBase)) {
+            continue; // Already grounded, skip to next leg
+        }
+        
+        int32_t currentFemur = servos[legBase+1]->pos_read();
+        int32_t currentTibia = servos[legBase+2]->pos_read();
+        
+        // Determine direction for both joints
+        // Femur: if below FEMUR_DOWN, increase (lower leg); if above, decrease
+        // Tibia: if below TIBIA_DOWN, increase (retract); if above, decrease (extend)
+        int32_t femurDirection = (currentFemur < FEMUR_DOWN) ? 1 : -1;
+        int32_t tibiaDirection = (currentTibia < TIBIA_DOWN) ? 1 : -1;
+        
+        
+        for (int step = 0; step < MAX_STEPS; step++) {
+            // Check if grounded now
+            if (isLegGrounded(legBase)) {
+                Serial.print("Leg ");
+                Serial.print(legBase);
+                Serial.print(" grounded at femur=");
+                Serial.print(currentFemur);
+                Serial.print(", tibia=");
+                Serial.println(currentTibia);
+                break;
+            }
+            
+            // Adjust both joints toward their targets
+            int32_t nextFemur = currentFemur + (femurDirection * FEMUR_STEP_SIZE);
+            int32_t nextTibia = currentTibia + (tibiaDirection * TIBIA_STEP_SIZE);
+            
+            // Safety limits for femur (both directions)
+            if (femurDirection > 0) {  // Moving down (increasing)
+                if (nextFemur > FEMUR_DOWN + 800) {
+                    nextFemur = FEMUR_DOWN + 800;
+                }
+            } else {  // Moving up (decreasing)
+                if (nextFemur < FEMUR_DOWN - 800) {
+                    nextFemur = FEMUR_DOWN - 800;
+                }
+            }
+            
+            // Safety limits for tibia (both directions)
+            if (tibiaDirection < 0) {  // Extending (decreasing)
+                if (nextTibia < TIBIA_DOWN - 1000) {
+                    nextTibia = TIBIA_DOWN - 1000;
+                }
+            } else {  // Retracting (increasing)
+                if (nextTibia > TIBIA_DOWN + 1000) {
+                    nextTibia = TIBIA_DOWN + 1000;
+                }
+            }
+            
+            servos[legBase+1]->move_time(nextFemur, STEP_DELAY);
+            servos[legBase+2]->move_time(nextTibia, STEP_DELAY);
+            
+            currentFemur = nextFemur;
+            currentTibia = nextTibia;
+            
+            delay(STEP_DELAY);
+            
+            // If reached safety limits without grounding, stop
+            bool femurLimitReached = (femurDirection > 0 && nextFemur >= FEMUR_DOWN + 800) ||
+                                     (femurDirection < 0 && nextFemur <= FEMUR_DOWN - 800);
+            bool tibiaLimitReached = (tibiaDirection < 0 && nextTibia <= TIBIA_DOWN - 1000) ||
+                                      (tibiaDirection > 0 && nextTibia >= TIBIA_DOWN + 1000);
+            
+            if (femurLimitReached && tibiaLimitReached) {
+                Serial.print("Leg ");
+                Serial.print(legBase);
+                Serial.println(" reached safety limits without grounding!");
+                break;
+            }
+        }
     }
 }
 
@@ -79,9 +190,6 @@ void moveForward() {
             break;
         case WAVE:
             waveGait.move();
-            break;
-        case RIPPLE:
-            break;
         default:
             tripodGait.move();
             break;
@@ -255,6 +363,154 @@ void stopMoving() {
     currentMode = IDLE;
 }
 
+void dance() {
+    Serial.println("Let's dance!");
+    
+    // Move 1: Body Wave - Sequential leg lifts creating a wave effect
+    Serial.println("Dance move: Body Wave");
+    for (int wave = 0; wave < 2; wave++) {
+        for (int i = 0; i < 6; i++) {
+            int legBase = WAVE_ORDER[i];
+            // Lift leg
+            servos[legBase + 1]->move_time(FEMUR_UP - 200, 200);
+            servos[legBase + 2]->move_time(TIBIA_UP + 150, 200);
+            delay(150);
+            // Lower leg
+            servos[legBase + 1]->move_time(FEMUR_DOWN, 200);
+            servos[legBase + 2]->move_time(TIBIA_DOWN, 200);
+            delay(100);
+        }
+    }
+    
+    // Move 2: Twist - Alternating coxa rotations
+    Serial.println("Dance move: Twist");
+    for (int twist = 0; twist < 4; twist++) {
+        // Twist right
+        for (int base = 0; base < 18; base += 3) {
+            int32_t target = (base % 6 == 0) ? COXA_FORWARD : COXA_BACKWARD;
+            servos[base]->move_time(target, 300);
+        }
+        delay(350);
+        
+        // Twist left
+        for (int base = 0; base < 18; base += 3) {
+            int32_t target = (base % 6 == 0) ? COXA_BACKWARD : COXA_FORWARD;
+            servos[base]->move_time(target, 300);
+        }
+        delay(350);
+    }
+    
+    // Reset coxa to default
+    for (int base = 0; base < 18; base += 3) {
+        servos[base]->move_time(COXA_DEFAULT, 300);
+    }
+    delay(350);
+    
+    // Move 3: Bounce - All legs up and down together
+    Serial.println("Dance move: Bounce");
+    for (int bounce = 0; bounce < 5; bounce++) {
+        // All legs up
+        for (int base = 0; base < 18; base += 3) {
+            servos[base + 1]->move_time(FEMUR_UP - 300, 200);
+            servos[base + 2]->move_time(TIBIA_UP + 200, 200);
+        }
+        delay(250);
+        
+        // All legs down
+        for (int base = 0; base < 18; base += 3) {
+            servos[base + 1]->move_time(FEMUR_DOWN, 200);
+            servos[base + 2]->move_time(TIBIA_DOWN, 200);
+        }
+        delay(250);
+    }
+    
+    // Move 4: Tripod Rock - Alternating tripod groups up/down
+    Serial.println("Dance move: Tripod Rock");
+    for (int rock = 0; rock < 4; rock++) {
+        // Lift tripod 1
+        for (int i = 0; i < 3; i++) {
+            int base = TRIPOD1_LEGS[i];
+            servos[base + 1]->move_time(FEMUR_UP - 250, 250);
+            servos[base + 2]->move_time(TIBIA_UP + 180, 250);
+        }
+        delay(300);
+        
+        // Lower tripod 1, lift tripod 2
+        for (int i = 0; i < 3; i++) {
+            int base = TRIPOD1_LEGS[i];
+            servos[base + 1]->move_time(FEMUR_DOWN, 250);
+            servos[base + 2]->move_time(TIBIA_DOWN, 250);
+        }
+        for (int i = 0; i < 3; i++) {
+            int base = TRIPOD2_LEGS[i];
+            servos[base + 1]->move_time(FEMUR_UP - 250, 250);
+            servos[base + 2]->move_time(TIBIA_UP + 180, 250);
+        }
+        delay(300);
+        
+        // Lower tripod 2
+        for (int i = 0; i < 3; i++) {
+            int base = TRIPOD2_LEGS[i];
+            servos[base + 1]->move_time(FEMUR_DOWN, 250);
+            servos[base + 2]->move_time(TIBIA_DOWN, 250);
+        }
+        delay(300);
+    }
+    
+    // Move 5: Shimmy - Rapid alternating coxa movements
+    Serial.println("Dance move: Shimmy");
+    for (int shimmy = 0; shimmy < 8; shimmy++) {
+        // Quick shift
+        for (int base = 0; base < 18; base += 3) {
+            int32_t offset = (shimmy % 2 == 0) ? 150 : -150;
+            servos[base]->move_time(COXA_DEFAULT + offset, 120);
+        }
+        delay(150);
+    }
+    
+    // Reset to default position
+    for (int base = 0; base < 18; base += 3) {
+        servos[base]->move_time(COXA_DEFAULT, 300);
+    }
+    delay(350);
+    
+    // Move 6: Finale - Big wave and bow
+    Serial.println("Dance move: Finale");
+    
+    // Big body wave
+    for (int i = 0; i < 6; i++) {
+        int legBase = WAVE_ORDER[i];
+        servos[legBase + 1]->move_time(FEMUR_UP - 150, 180);
+        servos[legBase + 2]->move_time(TIBIA_UP + 120, 180);
+        delay(120);
+    }
+    delay(200);
+    
+    // All legs down
+    for (int base = 0; base < 18; base += 3) {
+        servos[base + 1]->move_time(FEMUR_DOWN, 400);
+        servos[base + 2]->move_time(TIBIA_DOWN, 400);
+    }
+    delay(450);
+    
+    // Bow - tilt forward
+    for (int base = 0; base < 18; base += 3) {
+        // Front legs (0, 3) slightly up, back legs (12, 15) down more
+        if (base == 0 || base == 3) {
+            servos[base + 1]->move_time(FEMUR_DOWN - 200, 500);
+        } else if (base == 12 || base == 15) {
+            servos[base + 1]->move_time(FEMUR_DOWN + 200, 500);
+        }
+    }
+    delay(800);
+    
+    // Return to normal stance
+    initLegs();
+    
+    Serial.println("Dance complete!");
+    currentMode = IDLE;
+}
+
 int getBatteryPercentage() {
     return batteryReader.getPercentage();
 }
@@ -276,7 +532,7 @@ void handleIncoming(String incoming) {
     } else if (incoming.indexOf("LAY_DOWN") != -1) {
         currentMode = LAY_DOWN;
     } else if (incoming.indexOf("DANCE") != -1) {
-        currentMode = BALANCE;
+        currentMode = DANCE;
     } else if (incoming.indexOf("BALANCE") != -1) {
         currentMode = BALANCE;
     } else if (incoming.indexOf("TRIPOD_GAIT") != -1) {
@@ -410,6 +666,11 @@ void setup() {
         servos[i] = new LX16AServo(&servoBus, i + 1);
     }
 
+    for (int i = 0; i < 6; i++) {
+        pinMode(SWITCH_PINS[i], INPUT);
+    }
+    Serial.println("Switch pins initialized for ground detection (digital mode)");
+
     initLegs();
 
     // Initialize gyroscope
@@ -447,21 +708,21 @@ void loop() {
             break;
         case IDLE:
             initLegs();
+            currentMode = NONE;
             break;
         case LAY_DOWN:
             layDown();
-            currentMode = LAID_DOWN; // hold laid down posture until commanded otherwise
-            break;
-        case LAID_DOWN:
-            // Keep servos at last commanded positions; do nothing
-            delay(20);
+            currentMode = NONE;
             break;
         case STAND_UP:
             standUp();
             currentMode = IDLE;
             break;
+        case DANCE:
+            dance();
+            break;
         case BALANCE:
-            // Handle balance mode
+        case NONE:
             break;
         default:
             initLegs();

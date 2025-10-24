@@ -42,7 +42,10 @@ void TripodGait::move() {
         int leg = TRIPOD1_LEGS[i];
         moveLeg(leg, servos[leg]->pos_read(), FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
     }
-    delay(LOWER_TIME);
+    delay(LOWER_TIME + 100); // Extra time for servos to settle and switches to stabilize
+    
+    // Wait for all legs in Tripod 1 to make ground contact
+    // waitForTripodGrounded(TRIPOD1_LEGS);
 
 
     // === PHASE 2: Tripod 2 swings, Tripod 1 pushes ===
@@ -76,7 +79,10 @@ void TripodGait::move() {
         int leg = TRIPOD2_LEGS[i];
         moveLeg(leg, servos[leg]->pos_read(), FEMUR_DOWN, TIBIA_DOWN, LOWER_TIME);
     }
-    delay(LOWER_TIME); 
+    delay(LOWER_TIME + 100); // Extra time for servos to settle and switches to stabilize
+    
+    // Wait for all legs in Tripod 2 to make ground contact
+    // waitForTripodGrounded(TRIPOD2_LEGS); 
 }
 
 
@@ -133,7 +139,8 @@ void TripodGait::rotateInPlace(Direction dir) {
         int leg = TRIPOD1_LEGS[i];
         moveLeg(leg, servos[leg]->pos_read(), FEMUR_STANCE_ROTATE, TIBIA_STANCE_ROTATE, ROTATE_LOWER_TIME);
     }
-    delay(ROTATE_LOWER_TIME);
+    delay(ROTATE_LOWER_TIME + 100); // Extra time for servos to settle and switches to stabilize
+    
 
     // === PHASE 2: Tripod 2 swings, Tripod 1 pushes ===
     
@@ -181,5 +188,6 @@ void TripodGait::rotateInPlace(Direction dir) {
         int leg = TRIPOD2_LEGS[i];
         moveLeg(leg, servos[leg]->pos_read(), FEMUR_STANCE_ROTATE, TIBIA_STANCE_ROTATE, ROTATE_LOWER_TIME);
     }
-    delay(ROTATE_LOWER_TIME); 
+    delay(ROTATE_LOWER_TIME + 100); // Extra time for servos to settle and switches to stabilize
+    
 }

@@ -31,8 +31,8 @@ void WaveGait::move() {
             int support_leg = WAVE_ORDER[j];
             if (support_leg != leg) {
                 int32_t current_coxa = servos[support_leg]->pos_read();
-                int32_t shift = isRightSide(support_leg) ? -BODY_PUSH_DELTA : BODY_PUSH_DELTA;
-                int32_t new_coxa = constrain(current_coxa + shift, COXA_BACKWARD, COXA_FORWARD);
+                int32_t shift = isRightSide(support_leg) ? BODY_PUSH_DELTA : -BODY_PUSH_DELTA;
+                int32_t new_coxa = constrain(current_coxa + shift, COXA_FORWARD, COXA_BACKWARD);
                 moveLeg(support_leg, new_coxa, FEMUR_DOWN, TIBIA_DOWN, FAST_PUSH_TIME);
             }
         }
