@@ -6,9 +6,7 @@ BatteryReader::BatteryReader(int analogPin) {
     pinMode(analogPin,INPUT);
     analogReadResolution(12);
     analogSetPinAttenuation(analogPin, ADC_11db);
-    
     delay(100);
-    
     Serial.print(analogPin);
 }
 

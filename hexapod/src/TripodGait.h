@@ -10,11 +10,12 @@ public:
     TripodGait(LX16ABus& bus, LX16AServo** servoArray);
 
     void move() override;
+    
+    void moveBackward() override;
 
     void rotateInPlace(Direction dir);
 
 private:
-    // Helper function to apply drift correction
     int32_t applyCoxaOffset(int32_t basePosition, int leg);
 };
 

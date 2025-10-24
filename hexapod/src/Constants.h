@@ -1,4 +1,3 @@
-// Constants.h
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
@@ -6,13 +5,11 @@
 #include <lx16a-servo.h>
 
 
-// WiFi credentials
 extern const char* SSID;
 extern const char* PASSWORD;
 
 extern const int batteryPin;
 
-// Gait constants
 extern const int32_t COXA_FORWARD;
 extern const int32_t COXA_BACKWARD;
 extern const int32_t COXA_DEFAULT;
@@ -49,15 +46,12 @@ extern const int FEMUR_STANCE_ROTATE;
 extern const int TIBIA_STANCE_ROTATE;
 extern const int OVERLAP_DELAY;
 
-// Drift correction constants
 extern const int32_t LEFT_SIDE_COXA_OFFSET;
 extern const int32_t RIGHT_SIDE_COXA_OFFSET;
 
-// Rotation constants - more extreme positions for better rotation
 extern const int32_t COXA_ROTATE_FORWARD;
 extern const int32_t COXA_ROTATE_BACKWARD;
 
-// Rotation timing - slightly slower for smoother rotation
 extern const int ROTATE_MOVE_TIME;
 extern const int ROTATE_LIFT_TIME;
 extern const int ROTATE_LOWER_TIME;

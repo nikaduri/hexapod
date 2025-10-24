@@ -8,9 +8,11 @@ public:
     WaveGait(LX16ABus& bus, LX16AServo** servoArray);
 
     void move() override;
+    
+    void moveBackward() override;
 
 private:
-    
+
 };
 
 #endif
