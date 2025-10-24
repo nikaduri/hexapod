@@ -41,7 +41,6 @@ class RobotRepositoryImpl @Inject constructor(
             try {
                 _connectionState.value = RobotConnectionState.Connecting
                 
-                // Close existing connection if any
                 disconnect()
                 
                 Log.d("RobotRepository", "Attempting to connect to $ipAddress:$port")
@@ -54,13 +53,12 @@ class RobotRepositoryImpl @Inject constructor(
                     return@withContext
                 }
                 
-                // Configure socket options for better stability
                 newSocket.soTimeout = SOCKET_TIMEOUT
                 newSocket.keepAlive = true
-                newSocket.tcpNoDelay = true // Disable Nagle's algorithm
-                newSocket.sendBufferSize = 512  // Reduced for faster transmission
-                newSocket.receiveBufferSize = 512  // Reduced for faster reception
-                newSocket.setPerformancePreferences(0, 1, 0) // Prioritize latency over bandwidth
+                newSocket.tcpNoDelay = true
+                newSocket.sendBufferSize = 512
+                newSocket.receiveBufferSize = 512
+                newSocket.setPerformancePreferences(0, 1, 0)
                 
                 socket = newSocket
                 isConnected.set(true)
@@ -70,7 +68,6 @@ class RobotRepositoryImpl @Inject constructor(
                 _connectionState.value = RobotConnectionState.Connected(ipAddress, port)
                 Log.d("RobotRepository", "Successfully connected to $ipAddress:$port")
                 
-                // Start connection monitoring to keep connection alive
                 launch {
                     monitorConnection()
                 }
@@ -129,7 +126,6 @@ class RobotRepositoryImpl @Inject constructor(
                 lastCommandTime.set(now)
             } catch (e: Exception) {
                 Log.e("RobotRepository", "Failed to send command: ${e.message}", e)
-                // Only disconnect if the socket is actually closed or we get a serious error
                 if (socket?.isClosed == true || e is IOException) {
                     _connectionState.value = RobotConnectionState.Error("Connection lost")
                     disconnect()
@@ -158,8 +154,6 @@ class RobotRepositoryImpl @Inject constructor(
         Log.d("RobotRepository", "Stopping continuous command")
         continuousCommandJob?.cancelAndJoin()
         continuousCommandJob = null
-        // Don't send STOP command when stopping continuous commands
-        // The movement commands should handle their own stopping
     }
 
     override fun getLastIpAddress(): String {
@@ -187,7 +181,6 @@ class RobotRepositoryImpl @Inject constructor(
                     return@withContext null
                 }
 
-                // Get connection details from stored values
                 if (currentIpAddress.isEmpty() || currentPort == 0) {
                     Log.e("RobotRepository", "No connection details available")
                     return@withContext null
@@ -195,20 +188,17 @@ class RobotRepositoryImpl @Inject constructor(
                 
                 Log.d("RobotRepository", "Creating dedicated battery socket to $currentIpAddress:$currentPort")
                 
-                // Create a fresh socket connection just for battery request
                 batterySocket = Socket()
                 batterySocket.connect(InetSocketAddress(currentIpAddress, currentPort), 3000)
                 batterySocket.soTimeout = 5000
                 
                 Log.d("RobotRepository", "Battery socket connected, sending GET_BATTERY")
                 
-                // Send GET_BATTERY command
                 batterySocket.getOutputStream().apply {
                     write((RobotCommand.GET_BATTERY.value + "\n").toByteArray())
                     flush()
                 }
                 
-                // Read response from clean socket
                 val inputStream = batterySocket.getInputStream()
                 val responseBytes = ByteArray(256)
                 val bytesRead = inputStream.read(responseBytes)
@@ -217,7 +207,6 @@ class RobotRepositoryImpl @Inject constructor(
                     val fullResponse = String(responseBytes, 0, bytesRead)
                     Log.d("RobotRepository", "Raw battery response: '$fullResponse'")
                     
-                    // Find the battery line in the response
                     val lines = fullResponse.split('\n', '\r').filter { it.isNotBlank() }
                     val batteryLine = lines.find { it.startsWith("BATTERY:") }
                     
@@ -249,7 +238,6 @@ class RobotRepositoryImpl @Inject constructor(
                 Log.e("RobotRepository", "Failed to request battery status: ${e.message}", e)
                 return@withContext null
             } finally {
-                // Always close the dedicated battery socket
                 try {
                     batterySocket?.close()
                 } catch (e: Exception) {

@@ -34,7 +34,6 @@ class MainViewModel @Inject constructor(
             repository.connectionState.collect { state ->
                 _uiState.update { it.copy(connectionState = state) }
                 
-                // Start or stop battery polling based on connection state
                 when (state) {
                     is RobotConnectionState.Connected -> startBatteryPolling()
                     else -> stopBatteryPolling()
@@ -79,7 +78,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // Gait mode selection methods
     fun setTripodGait() {
         onSingleCommand(RobotCommand.TRIPOD_GAIT)
         _uiState.update { it.copy(currentGaitMode = GaitMode.TRIPOD) }
@@ -99,15 +97,13 @@ class MainViewModel @Inject constructor(
     fun getLastPort(): Int = repository.getLastPort()
 
     private fun startBatteryPolling() {
-        stopBatteryPolling() // Stop any existing polling
+        stopBatteryPolling()
         
         batteryPollingJob = viewModelScope.launch {
-            // Initial battery request
             repository.requestBatteryStatus()
             
-            // Poll every minute (60 seconds)
             while (true) {
-                delay(60_000) // 60 seconds
+                delay(60_000)
                 repository.requestBatteryStatus()
             }
         }

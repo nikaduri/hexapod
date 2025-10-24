@@ -55,11 +55,10 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupClickListeners() {
-        // Movement controls with continuous transmission
         val motionButtonListener = View.OnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    v.isPressed = true  // Manually set pressed state
+                    v.isPressed = true
                     when (v.id) {
                         R.id.btn_forward -> {
                             Log.d("MainActivity", "Forward button pressed")
@@ -80,12 +79,12 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    v.isPressed = false  // Reset pressed state
+                    v.isPressed = false
                     Log.d("MainActivity", "Button released")
                     viewModel.onCommandButtonReleased()
                 }
             }
-            false  // Return false to allow the button's default touch handling
+            false
         }
 
         with(binding) {
@@ -94,7 +93,6 @@ class MainActivity : AppCompatActivity() {
             btnLeft.setOnTouchListener(motionButtonListener)
             btnRight.setOnTouchListener(motionButtonListener)
 
-            // Single command buttons
             btnStop.setOnClickListener { 
                 Log.d("MainActivity", "Stop button clicked")
                 viewModel.onSingleCommand(RobotCommand.STOP) 
@@ -112,7 +110,6 @@ class MainActivity : AppCompatActivity() {
                 viewModel.onSingleCommand(RobotCommand.DANCE) 
             }
 
-            // Gait mode buttons
             btnTripodGait.setOnClickListener {
                 Log.d("MainActivity", "Tripod Gait button clicked")
                 viewModel.setTripodGait()
@@ -121,9 +118,6 @@ class MainActivity : AppCompatActivity() {
                 Log.d("MainActivity", "Wave Gait button clicked")
                 viewModel.setWaveGait()
             }
-
-            // QR Scanner launch
-            //btnScanQr.setOnClickListener { checkCameraPermission() }
         }
     }
 
@@ -168,8 +162,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        
-        // Observe battery status separately
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.batteryStatus.collect { batteryStatus ->
@@ -187,8 +179,6 @@ class MainActivity : AppCompatActivity() {
             is RobotConnectionState.Error -> "Error: ${connectionState.message}"
         }
         binding.tvStatus.text = statusText
-        
-        // Log connection state changes
         Log.d("MainActivity", "Connection state changed to: $connectionState")
         if (connectionState is RobotConnectionState.Error) {
             Log.e("MainActivity", "Connection error: ${connectionState.message}")
@@ -196,15 +186,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateGaitModeHighlighting(currentGaitMode: GaitMode) {
-        // Reset all gait buttons to normal style
         binding.btnTripodGait.setBackgroundTintList(null)
         binding.btnWaveGait.setBackgroundTintList(null)
 
-        // Apply normal style to all buttons
         binding.btnTripodGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.accent, null)))
         binding.btnWaveGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.accent, null)))
 
-        // Highlight the current gait mode with distinct color
         when (currentGaitMode) {
             GaitMode.TRIPOD -> binding.btnTripodGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.gait_selected, null)))
             GaitMode.WAVE -> binding.btnWaveGait.setBackgroundTintList(android.content.res.ColorStateList.valueOf(resources.getColor(R.color.gait_selected, null)))

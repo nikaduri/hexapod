@@ -9,10 +9,8 @@ enum class RobotCommand(val value: String) {
     STAND("STAND"),
     LAY_DOWN("LAY_DOWN"),
     DANCE("DANCE"),
-    // Gait modes
     TRIPOD_GAIT("TRIPOD_GAIT"),
     WAVE_GAIT("WAVE_GAIT"),
-    // Battery monitoring
     GET_BATTERY("GET_BATTERY");
 
     companion object {

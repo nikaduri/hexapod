@@ -8,14 +8,12 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <!-- Main Content -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:background="@color/background_dark">
 
-        <!-- Toolbar with Menu and Battery Status -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
@@ -41,7 +39,6 @@
 
         </LinearLayout>
 
-        <!-- Movement Controls Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -51,7 +48,6 @@
             android:layout_marginBottom="4dp"
             android:paddingHorizontal="16dp">
 
-            <!-- Forward/Backward Controls (Left Side) -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -72,7 +68,6 @@
                     android:text="↓"/>
             </LinearLayout>
 
-            <!-- Center Space with Stop Button -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -88,7 +83,6 @@
                     android:text="■"/>
             </LinearLayout>
 
-            <!-- Left/Right Controls (Right Side) -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -110,7 +104,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Special Commands and Gait Controls Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -119,7 +112,6 @@
             android:orientation="horizontal"
             android:paddingHorizontal="16dp">
 
-            <!-- Special Commands (Left Side) -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -146,7 +138,6 @@
                     android:text="Dance" />
             </LinearLayout>
 
-            <!-- Gait Mode Controls (Right Side) -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -168,7 +159,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Status Bar -->
         <TextView
             android:id="@+id/tv_status"
             android:layout_width="match_parent"
@@ -179,7 +169,6 @@
             android:background="@color/primary_dark"/>
     </LinearLayout>
 
-    <!-- Navigation Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="wrap_content"

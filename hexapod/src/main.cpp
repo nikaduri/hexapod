@@ -40,7 +40,7 @@ void trimIncomingString(String& incoming) {
     String cleanCommand = "";
     for (int i = 0; i < incoming.length(); i++) {
         char c = incoming.charAt(i);
-        if (c >= 32 && c <= 126) {
+        if (c >= 32 && c <= 126) { // Only keep printable ASCII characters
             cleanCommand += c;
         }
     }
@@ -48,6 +48,7 @@ void trimIncomingString(String& incoming) {
 }
 
 
+// Helper function to get switch index from leg base servo ID
 int getSwitchIndexForLeg(int legBase) {
     switch(legBase) {
         case 0:  return 0;
@@ -60,12 +61,14 @@ int getSwitchIndexForLeg(int legBase) {
     }
 }
 
+// Helper function to check if leg is on ground (debounced)
 bool isLegGrounded(int legBase) {
     int switchIndex = getSwitchIndexForLeg(legBase);
     if (switchIndex < 0) return false;
     
     int switchPin = SWITCH_PINS[switchIndex];
     
+    // Take multiple readings and use majority vote for reliability
     int pressedCount = 0;
     const int READINGS = 5;
     
@@ -76,6 +79,7 @@ bool isLegGrounded(int legBase) {
         delayMicroseconds(200);
     }
     
+    // Require at least 3 out of 5 readings to be HIGH
     return pressedCount >= 3;
 }
 
@@ -89,81 +93,6 @@ void initLegs() {
         }
         if(servos[i+2]->pos_read() != TIBIA_DOWN) {
             servos[i+2]->move_time(TIBIA_DOWN, 200);
-        }
-    }
-
-    delay(1000);
-
-    const int32_t TIBIA_STEP_SIZE = 80;
-    const int32_t FEMUR_STEP_SIZE = 60;
-    const int STEP_DELAY = 25;
-    const int MAX_STEPS = 40;
-    
-    for (int legBase = 0; legBase < 18; legBase += 3) {
-        if (isLegGrounded(legBase)) {
-            continue;
-        }
-        
-        int32_t currentFemur = servos[legBase+1]->pos_read();
-        int32_t currentTibia = servos[legBase+2]->pos_read();
-        
-        int32_t femurDirection = (currentFemur < FEMUR_DOWN) ? 1 : -1;
-        int32_t tibiaDirection = (currentTibia < TIBIA_DOWN) ? 1 : -1;
-        
-        
-        for (int step = 0; step < MAX_STEPS; step++) {
-            if (isLegGrounded(legBase)) {
-                Serial.print("Leg ");
-                Serial.print(legBase);
-                Serial.print(" grounded at femur=");
-                Serial.print(currentFemur);
-                Serial.print(", tibia=");
-                Serial.println(currentTibia);
-                break;
-            }
-            
-            int32_t nextFemur = currentFemur + (femurDirection * FEMUR_STEP_SIZE);
-            int32_t nextTibia = currentTibia + (tibiaDirection * TIBIA_STEP_SIZE);
-            
-            if (femurDirection > 0) {
-                if (nextFemur > FEMUR_DOWN + 800) {
-                    nextFemur = FEMUR_DOWN + 800;
-                }
-            } else {
-                if (nextFemur < FEMUR_DOWN - 800) {
-                    nextFemur = FEMUR_DOWN - 800;
-                }
-            }
-            
-            if (tibiaDirection < 0) {
-                if (nextTibia < TIBIA_DOWN - 1000) {
-                    nextTibia = TIBIA_DOWN - 1000;
-                }
-            } else {
-                if (nextTibia > TIBIA_DOWN + 1000) {
-                    nextTibia = TIBIA_DOWN + 1000;
-                }
-            }
-            
-            servos[legBase+1]->move_time(nextFemur, STEP_DELAY);
-            servos[legBase+2]->move_time(nextTibia, STEP_DELAY);
-            
-            currentFemur = nextFemur;
-            currentTibia = nextTibia;
-            
-            delay(STEP_DELAY);
-            
-            bool femurLimitReached = (femurDirection > 0 && nextFemur >= FEMUR_DOWN + 800) ||
-                                     (femurDirection < 0 && nextFemur <= FEMUR_DOWN - 800);
-            bool tibiaLimitReached = (tibiaDirection < 0 && nextTibia <= TIBIA_DOWN - 1000) ||
-                                      (tibiaDirection > 0 && nextTibia >= TIBIA_DOWN + 1000);
-            
-            if (femurLimitReached && tibiaLimitReached) {
-                Serial.print("Leg ");
-                Serial.print(legBase);
-                Serial.println(" reached safety limits without grounding!");
-                break;
-            }
         }
     }
 }
@@ -198,20 +127,31 @@ void moveBackward() {
 
 void layDown() {
     Serial.println("Laying down posture (gentle, hold)");
+
+    // Gentler movement: slower timings and smaller deltas
     const int32_t targetCoxa = COXA_DEFAULT;
-    const int32_t targetFemurStage1 = (FEMUR_UP - 500);
-    const int32_t targetFemurStage2 = FEMUR_UP - 250;
-    const int32_t targetTibiaStage1 = TIBIA_UP + 120;
-    const int32_t targetTibiaStage2 = TIBIA_UP + 260;
+
+    // Soften femur/tibia targets for less aggressive tuck (avoid min() to silence -Wstrict-overflow)
+    const int32_t targetFemurStage1 = (FEMUR_UP - 500); // smaller initial raise
+    const int32_t targetFemurStage2 = FEMUR_UP - 250;                // less extreme final
+
+    const int32_t targetTibiaStage1 = TIBIA_UP + 120; // small bend
+    const int32_t targetTibiaStage2 = TIBIA_UP + 260; // moderate bend
+
+    // Stage 1: ensure coxa are neutral
     for (int base = 0; base < 18; base += 3) {
         servos[base]->move_time(targetCoxa, 380);
     }
     delay(420);
+
+    // Stage 2: gentle femur raise + slight tibia bend
     for (int base = 0; base < 18; base += 3) {
         servos[base + 1]->move_time(targetFemurStage1, 420);
         servos[base + 2]->move_time(targetTibiaStage1, 420);
     }
     delay(450);
+
+    // Stage 3: finish tuck with moderate femur/tibia targets
     for (int base = 0; base < 18; base += 3) {
         servos[base + 1]->move_time(targetFemurStage2, 520);
         servos[base + 2]->move_time(targetTibiaStage2, 520);
@@ -225,10 +165,14 @@ void standUp() {
     Serial.println("Standing up from laid posture (tripod-staged)");
 
     const int32_t targetCoxa = COXA_DEFAULT;
+
+    // Step 0: neutralize all coxa to avoid sweeping
     for (int base = 0; base < 18; base += 3) {
         servos[base]->move_time(targetCoxa, 380);
     }
     delay(400);
+
+    // Helper lambdas for grouped moves
     auto moveTripod = [&](const int legs[3], int32_t femur, int32_t tibia, int time) {
         for (int i = 0; i < 3; i++) {
             int base = legs[i];
@@ -251,6 +195,7 @@ void standUp() {
         }
     };
 
+    // Conservative targets
     const int32_t femurLift = (FEMUR_UP - 280);
     const int32_t tibiaUnbend1 = (TIBIA_UP + 110);
     const int32_t tibiaUnbend2 = (TIBIA_UP + 50);
@@ -258,27 +203,40 @@ void standUp() {
     const int32_t tibiaStance = TIBIA_DOWN;
     const int32_t femurStance = FEMUR_DOWN;
 
+    // Tripod 1 staged stand-up (15, 12, 6)
+    // Targeted relief for leg 15 first (known sticky)
     servos[15 + 1]->move_time(FEMUR_UP - 250, 420);
     servos[15 + 2]->move_time(TIBIA_UP + 120, 420);
     delay(440);
+
+    // Stage A1: lift femur and unbend tibia
     moveTripod(TRIPOD1_LEGS, femurLift, tibiaUnbend1, 420);
     delay(440);
+    // Stage A2: more tibia extension while keeping femur high
     moveTripodTibiaOnly(TRIPOD1_LEGS, tibiaUnbend2, 440);
     delay(460);
+    // Stage A3: lower femur towards stance and extend tibia to stance
     moveTripod(TRIPOD1_LEGS, femurApproach, tibiaStance, 480);
     delay(500);
+    // Stage A4: finalize femur stance
     moveTripodFemurOnly(TRIPOD1_LEGS, femurStance, 500);
     delay(520);
 
+    // Tripod 2 staged stand-up (0, 3, 9)
+    // Stage B1: lift femur and unbend tibia
     moveTripod(TRIPOD2_LEGS, femurLift, tibiaUnbend1, 420);
     delay(440);
+    // Stage B2: more tibia extension while keeping femur high
     moveTripodTibiaOnly(TRIPOD2_LEGS, tibiaUnbend2, 440);
     delay(460);
+    // Stage B3: lower femur towards stance and extend tibia to stance
     moveTripod(TRIPOD2_LEGS, femurApproach, tibiaStance, 480);
     delay(500);
+    // Stage B4: finalize femur stance
     moveTripodFemurOnly(TRIPOD2_LEGS, femurStance, 500);
     delay(520);
 
+    // Small final normalization to exact stance for all legs
     initLegs();
 
     Serial.println("Stand up complete");
@@ -315,10 +273,6 @@ void rotate(Direction direction) {
     }
 }
 
-void moveBackward() {
-    rotate(BACKWARD);
-    moveForward();
-}
 
 void moveLeft() {
     rotate(LEFT);
@@ -336,56 +290,77 @@ void stopMoving() {
 
 void dance() {
     Serial.println("Let's dance!");
+    
+    // Move 1: Body Wave - Sequential leg lifts creating a wave effect
     Serial.println("Dance move: Body Wave");
     for (int wave = 0; wave < 2; wave++) {
         for (int i = 0; i < 6; i++) {
             int legBase = WAVE_ORDER[i];
+            // Lift leg
             servos[legBase + 1]->move_time(FEMUR_UP - 200, 200);
             servos[legBase + 2]->move_time(TIBIA_UP + 150, 200);
             delay(150);
+            // Lower leg
             servos[legBase + 1]->move_time(FEMUR_DOWN, 200);
             servos[legBase + 2]->move_time(TIBIA_DOWN, 200);
             delay(100);
         }
     }
+    
+    // Move 2: Twist - Alternating coxa rotations
     Serial.println("Dance move: Twist");
     for (int twist = 0; twist < 4; twist++) {
+        // Twist right
         for (int base = 0; base < 18; base += 3) {
             int32_t target = (base % 6 == 0) ? COXA_FORWARD : COXA_BACKWARD;
             servos[base]->move_time(target, 300);
         }
         delay(350);
+        
+        // Twist left
         for (int base = 0; base < 18; base += 3) {
             int32_t target = (base % 6 == 0) ? COXA_BACKWARD : COXA_FORWARD;
             servos[base]->move_time(target, 300);
         }
         delay(350);
     }
+    
+    // Reset coxa to default
     for (int base = 0; base < 18; base += 3) {
         servos[base]->move_time(COXA_DEFAULT, 300);
     }
     delay(350);
+    
+    // Move 3: Bounce - All legs up and down together
     Serial.println("Dance move: Bounce");
     for (int bounce = 0; bounce < 5; bounce++) {
+        // All legs up
         for (int base = 0; base < 18; base += 3) {
             servos[base + 1]->move_time(FEMUR_UP - 300, 200);
             servos[base + 2]->move_time(TIBIA_UP + 200, 200);
         }
         delay(250);
+        
+        // All legs down
         for (int base = 0; base < 18; base += 3) {
             servos[base + 1]->move_time(FEMUR_DOWN, 200);
             servos[base + 2]->move_time(TIBIA_DOWN, 200);
         }
         delay(250);
     }
+    
+    // Move 4: Tripod Rock - Alternating tripod groups up/down
     Serial.println("Dance move: Tripod Rock");
     for (int rock = 0; rock < 4; rock++) {
+        // Lift tripod 1
         for (int i = 0; i < 3; i++) {
             int base = TRIPOD1_LEGS[i];
             servos[base + 1]->move_time(FEMUR_UP - 250, 250);
             servos[base + 2]->move_time(TIBIA_UP + 180, 250);
         }
         delay(300);
+        
+        // Lower tripod 1, lift tripod 2
         for (int i = 0; i < 3; i++) {
             int base = TRIPOD1_LEGS[i];
             servos[base + 1]->move_time(FEMUR_DOWN, 250);
@@ -397,6 +372,8 @@ void dance() {
             servos[base + 2]->move_time(TIBIA_UP + 180, 250);
         }
         delay(300);
+        
+        // Lower tripod 2
         for (int i = 0; i < 3; i++) {
             int base = TRIPOD2_LEGS[i];
             servos[base + 1]->move_time(FEMUR_DOWN, 250);
@@ -404,19 +381,28 @@ void dance() {
         }
         delay(300);
     }
+    
+    // Move 5: Shimmy - Rapid alternating coxa movements
     Serial.println("Dance move: Shimmy");
     for (int shimmy = 0; shimmy < 8; shimmy++) {
+        // Quick shift
         for (int base = 0; base < 18; base += 3) {
             int32_t offset = (shimmy % 2 == 0) ? 150 : -150;
             servos[base]->move_time(COXA_DEFAULT + offset, 120);
         }
         delay(150);
     }
+    
+    // Reset to default position
     for (int base = 0; base < 18; base += 3) {
         servos[base]->move_time(COXA_DEFAULT, 300);
     }
     delay(350);
+    
+    // Move 6: Finale - Big wave and bow
     Serial.println("Dance move: Finale");
+    
+    // Big body wave
     for (int i = 0; i < 6; i++) {
         int legBase = WAVE_ORDER[i];
         servos[legBase + 1]->move_time(FEMUR_UP - 150, 180);
@@ -424,12 +410,17 @@ void dance() {
         delay(120);
     }
     delay(200);
+    
+    // All legs down
     for (int base = 0; base < 18; base += 3) {
         servos[base + 1]->move_time(FEMUR_DOWN, 400);
         servos[base + 2]->move_time(TIBIA_DOWN, 400);
     }
     delay(450);
+    
+    // Bow - tilt forward
     for (int base = 0; base < 18; base += 3) {
+        // Front legs (0, 3) slightly up, back legs (12, 15) down more
         if (base == 0 || base == 3) {
             servos[base + 1]->move_time(FEMUR_DOWN - 200, 500);
         } else if (base == 12 || base == 15) {
@@ -437,7 +428,10 @@ void dance() {
         }
     }
     delay(800);
+    
+    // Return to normal stance
     initLegs();
+    
     Serial.println("Dance complete!");
     currentMode = IDLE;
 }
@@ -597,7 +591,7 @@ void setup() {
     }
 
     for (int i = 0; i < 6; i++) {
-        pinMode(SWITCH_PINS[i], INPUT);  // Use pull-down for digital switches
+        pinMode(SWITCH_PINS[i], INPUT);
     }
     Serial.println("Switch pins initialized for ground detection (digital mode)");
 
